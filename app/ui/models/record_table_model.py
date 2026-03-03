@@ -11,7 +11,7 @@ SEARCH_ROLE = Qt.UserRole + 1
 COMPLETENESS_ROLE = Qt.UserRole + 2
 
 COLUMNS = [
-    ("completeness", ""),
+    ("completeness", "Document"),
     ("full_name", "Name"),
     ("passport_number", "Passport"),
     ("visa_category", "Visa Category"),
@@ -95,13 +95,13 @@ class RecordTableModel(QAbstractTableModel):
             if col_key == "completeness":
                 status = self._completeness.get(record.id, "")
                 if status == "complete":
-                    return "OK"
+                    return "Ok"
                 elif status == "missing_fields":
                     return "!!"
                 elif status == "incomplete_documents":
-                    return "DOC"
+                    return "Inc"
                 elif status == "no_documents":
-                    return "---"
+                    return "None"
                 return ""
             if col_key == "full_name":
                 return record.full_name or ""
@@ -113,8 +113,10 @@ class RecordTableModel(QAbstractTableModel):
                 from PySide6.QtGui import QColor
                 if status == "complete":
                     return QColor("#34C759")
-                elif status in ("missing_fields", "incomplete_documents", "no_documents"):
+                elif status in ("missing_fields", "incomplete_documents"):
                     return QColor("#FF9500")
+                elif status == "no_documents":
+                    return QColor("#FF3B30")
             return None
 
         if role == Qt.TextAlignmentRole:

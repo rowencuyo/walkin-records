@@ -336,6 +336,22 @@ class ProfileView(QWidget):
         if not ok:
             return
 
+        # Check if this document type already exists
+        existing_docs = self._document_service.get_documents(self._record_id)
+        existing = [d for d in existing_docs if d.document_type == doc_type]
+        if existing:
+            reply = QMessageBox.question(
+                self, "Replace Document",
+                f"A '{doc_type}' document already exists.\n"
+                f"Do you want to replace it?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
+            # Delete the existing one
+            for d in existing:
+                self._document_service.delete_document(d.id)
+
         ext_filter = " ".join(f"*{e}" for e in ALLOWED_DOCUMENT_EXTENSIONS)
         path, _ = QFileDialog.getOpenFileName(
             self, "Select Document", "", f"Documents ({ext_filter})"

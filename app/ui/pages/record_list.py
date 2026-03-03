@@ -121,7 +121,7 @@ class RecordCard(QFrame):
         elif completeness == "no_documents":
             badge = QLabel("No Docs")
             badge.setStyleSheet(
-                "background-color: #FF9500; color: white; padding: 2px 8px; "
+                "background-color: #FF3B30; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
             )
             badge.setFixedHeight(20)
