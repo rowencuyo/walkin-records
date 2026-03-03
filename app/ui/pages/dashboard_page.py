@@ -115,7 +115,6 @@ class DashboardPage(QWidget):
                 border: 1px solid {Colors.BORDER_LIGHT};
                 border-radius: 8px;
                 text-align: left;
-                padding: 16px;
             }}
             QPushButton:hover {{
                 border-color: {color};
@@ -123,7 +122,7 @@ class DashboardPage(QWidget):
             }}"""
         )
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setContentsMargins(16, 16, 16, 16)
         card_layout.setSpacing(4)
 
         val_label = QLabel(value)
@@ -213,7 +212,7 @@ class DashboardPage(QWidget):
         # Action: open record if linked
         if notif.record_id:
             open_btn = QPushButton("Open")
-            open_btn.setFixedHeight(32)
+            open_btn.setFixedHeight(29)
             open_btn.setMinimumWidth(60)
             open_btn.clicked.connect(lambda: self.record_selected.emit(notif.record_id))
             layout.addWidget(open_btn)
