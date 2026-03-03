@@ -124,7 +124,8 @@ class ProfileView(QWidget):
 
         # Completeness banner
         documents = self._document_service.get_documents(self._record_id)
-        status, missing_items = check_completeness(self._record, len(documents))
+        doc_types = [d.document_type for d in documents]
+        status, missing_items = check_completeness(self._record, len(documents), doc_types)
         if status != "complete":
             banner = QLabel("Incomplete: " + ", ".join(missing_items))
             banner.setStyleSheet(
@@ -269,7 +270,7 @@ class ProfileView(QWidget):
                 else:
                     icon = QLabel("[!!]")
                     icon.setStyleSheet("color: #FF3B30; font-weight: 600;")
-                icon.setFixedWidth(30)
+                icon.setFixedWidth(40)
                 row.addWidget(icon)
 
                 info = QVBoxLayout()
@@ -303,13 +304,14 @@ class ProfileView(QWidget):
                     del_btn = QPushButton("Remove")
                     del_btn.setObjectName("dangerButton")
                     del_btn.setFixedHeight(34)
+                    del_btn.setMinimumWidth(80)
                     del_btn.clicked.connect(lambda checked, d=doc: self._delete_document(d))
                     row.addWidget(del_btn)
 
                 row_widget = QWidget()
                 row_widget.setLayout(row)
                 row_widget.setStyleSheet(
-                    f"background-color: {Colors.BG_SECONDARY}; border-radius: 6px; padding: 4px 8px;"
+                    f"background-color: {Colors.BG_SECONDARY}; border-radius: 6px; padding: 8px 12px;"
                 )
                 layout.addWidget(row_widget)
 

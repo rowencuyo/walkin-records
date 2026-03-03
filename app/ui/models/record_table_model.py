@@ -30,7 +30,7 @@ class RecordTableModel(QAbstractTableModel):
         super().__init__(parent)
         self._records: list[WalkInRecord] = []
         self._total_count: int = 0
-        self._doc_counts: dict[int, int] = {}  # record_id -> document count
+        self._doc_types: dict[int, list[str]] = {}  # record_id -> document types
         self._completeness: dict[int, str] = {}  # record_id -> status
 
     # -- Data interface --
@@ -39,13 +39,13 @@ class RecordTableModel(QAbstractTableModel):
         self,
         records: list[WalkInRecord],
         total_count: int,
-        doc_counts: dict[int, int] | None = None,
+        doc_types: dict[int, list[str]] | None = None,
     ):
         """Replace current data."""
         self.beginResetModel()
         self._records = records
         self._total_count = total_count
-        self._doc_counts = doc_counts or {}
+        self._doc_types = doc_types or {}
         self._compute_completeness()
         self.endResetModel()
 
@@ -54,8 +54,8 @@ class RecordTableModel(QAbstractTableModel):
         from app.services.completeness import check_completeness
         self._completeness = {}
         for r in self._records:
-            doc_count = self._doc_counts.get(r.id, 0)
-            status, _ = check_completeness(r, doc_count)
+            types = self._doc_types.get(r.id, [])
+            status, _ = check_completeness(r, len(types), types)
             self._completeness[r.id] = status
 
     def get_record(self, row: int) -> WalkInRecord | None:

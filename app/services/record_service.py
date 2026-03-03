@@ -98,6 +98,25 @@ class RecordService:
         rows = conn.execute(sql, record_ids).fetchall()
         return {row["record_id"]: row["cnt"] for row in rows}
 
+    def get_document_types(self, record_ids: list[int]) -> dict[int, list[str]]:
+        """Get document types uploaded for multiple records in one query."""
+        if not record_ids:
+            return {}
+        conn = get_connection()
+        placeholders = ",".join("?" * len(record_ids))
+        sql = (
+            f"SELECT record_id, document_type FROM documents "
+            f"WHERE record_id IN ({placeholders})"
+        )
+        rows = conn.execute(sql, record_ids).fetchall()
+        result: dict[int, list[str]] = {}
+        for row in rows:
+            rid = row["record_id"]
+            if rid not in result:
+                result[rid] = []
+            result[rid].append(row["document_type"])
+        return result
+
     # --------------- SEARCH ---------------
     def search_records(
         self,

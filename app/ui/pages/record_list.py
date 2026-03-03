@@ -330,19 +330,19 @@ class RecordListPage(QWidget):
         self._current_records = records
         self._total_count = total
 
-        # Batch-load document counts for completeness
+        # Batch-load document types for completeness
         record_ids = [r.id for r in records if r.id is not None]
-        self._doc_counts = self._record_service.get_document_counts(record_ids)
+        self._doc_types = self._record_service.get_document_types(record_ids)
 
         # Compute completeness
         from app.services.completeness import check_completeness
         self._completeness_cache = {}
         for r in records:
-            doc_count = self._doc_counts.get(r.id, 0)
-            status, _ = check_completeness(r, doc_count)
+            types = self._doc_types.get(r.id, [])
+            status, _ = check_completeness(r, len(types), types)
             self._completeness_cache[r.id] = status
 
-        self._table_model.set_data(records, total, self._doc_counts)
+        self._table_model.set_data(records, total, self._doc_types)
         self._update_pagination()
 
         if self._view_stack.currentIndex() == 1:
