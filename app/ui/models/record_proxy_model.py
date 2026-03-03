@@ -8,6 +8,16 @@ giving immediate feedback without re-querying the database.
 """
 from PySide6.QtCore import Qt, QSortFilterProxyModel, QModelIndex
 
+COMPLETENESS_ROLE = Qt.UserRole + 2
+
+# Priority order: Ok (1) → !! (2) → Inc (3) → None (4)
+_COMPLETENESS_PRIORITY = {
+    "complete": 1,
+    "missing_fields": 2,
+    "incomplete_documents": 3,
+    "no_documents": 4,
+}
+
 
 class RecordProxyModel(QSortFilterProxyModel):
     """Proxy model with client-side sorting and instant search filter."""
@@ -28,6 +38,16 @@ class RecordProxyModel(QSortFilterProxyModel):
             self._search_terms = new_terms
             self.invalidateFilter()
 
+    def lessThan(self, left: QModelIndex, right: QModelIndex) -> bool:
+        """Custom sort: Document column sorts by priority, not alphabetically."""
+        if left.column() == 0:
+            left_status = self.sourceModel().data(left, COMPLETENESS_ROLE) or ""
+            right_status = self.sourceModel().data(right, COMPLETENESS_ROLE) or ""
+            left_priority = _COMPLETENESS_PRIORITY.get(left_status, 99)
+            right_priority = _COMPLETENESS_PRIORITY.get(right_status, 99)
+            return left_priority < right_priority
+        return super().lessThan(left, right)
+
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         if not self._search_terms:
             return True
@@ -45,3 +65,4 @@ class RecordProxyModel(QSortFilterProxyModel):
         search_lower = search_text.lower()
         # AND logic: every search term must appear somewhere
         return all(term in search_lower for term in self._search_terms)
+
