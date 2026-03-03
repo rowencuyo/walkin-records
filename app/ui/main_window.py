@@ -18,7 +18,6 @@ from app.ui.components.sidebar import Sidebar
 from app.ui.pages.record_list import RecordListPage
 from app.ui.pages.record_form import RecordForm
 from app.ui.pages.profile_view import ProfileView
-from app.ui.pages.backup_page import BackupPage
 from app.ui.pages.login_page import LoginPage
 from app.ui.pages.lock_screen import LockScreen
 from app.ui.pages.dashboard_page import DashboardPage
@@ -173,15 +172,13 @@ class MainWindow(QMainWindow):
         self._notification_page = NotificationPage()
         self._notification_page.record_selected.connect(self._show_profile)
 
-        self._backup_page = BackupPage()
         self._settings_page = SettingsPage()
 
         # Add pages
         self._content.addWidget(self._dashboard_page)    # index 0
         self._content.addWidget(self._record_list)       # index 1
         self._content.addWidget(self._notification_page) # index 2
-        self._content.addWidget(self._backup_page)       # index 3
-        self._content.addWidget(self._settings_page)     # index 4
+        self._content.addWidget(self._settings_page)     # index 3
 
     # ── Login / Lock ──
 
@@ -338,9 +335,6 @@ class MainWindow(QMainWindow):
             self._notification_page.load_data()
             self._scan_notifications()  # refresh badge
             self._status_bar.showMessage("Notifications")
-        elif page_id == "backup":
-            self._content.setCurrentWidget(self._backup_page)
-            self._status_bar.showMessage("Backup & Restore")
         elif page_id == "settings":
             self._content.setCurrentWidget(self._settings_page)
             self._status_bar.showMessage("Settings")
