@@ -296,20 +296,20 @@ class ProfileView(QWidget):
 
                 if file_exists:
                     open_btn = QPushButton("Open")
-                    open_btn.setFixedHeight(38)
+                    open_btn.setFixedHeight(41)
                     open_btn.setMinimumWidth(70)
                     open_btn.clicked.connect(lambda checked, d=doc: self._open_document(d))
                     row.addWidget(open_btn)
                 else:
                     locate_btn = QPushButton("Locate")
-                    locate_btn.setFixedHeight(38)
+                    locate_btn.setFixedHeight(41)
                     locate_btn.setMinimumWidth(70)
                     locate_btn.clicked.connect(lambda checked, d=doc: self._locate_document(d))
                     row.addWidget(locate_btn)
 
                 if not self._read_only:
                     del_btn = QPushButton("Remove")
-                    del_btn.setFixedHeight(38)
+                    del_btn.setFixedHeight(41)
                     del_btn.setMinimumWidth(90)
                     del_btn.clicked.connect(lambda checked, d=doc: self._delete_document(d))
                     row.addWidget(del_btn)

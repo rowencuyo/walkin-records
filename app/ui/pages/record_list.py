@@ -103,7 +103,7 @@ class RecordCard(QFrame):
             badge.setFixedHeight(20)
             top.addWidget(badge, alignment=Qt.AlignTop)
         elif completeness in ("missing_fields", "missing_documents"):
-            badge_text = "Missing Fields" if completeness == "missing_fields" else "No Docs"
+            badge_text = "Missing Fields" if completeness == "missing_fields" else "Incomplete Docs"
             badge = QLabel(badge_text)
             badge.setStyleSheet(
                 "background-color: #FF9500; color: white; padding: 2px 8px; "
