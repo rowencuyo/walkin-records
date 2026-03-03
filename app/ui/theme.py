@@ -12,42 +12,42 @@ def _is_macos():
 # ── Color Palette ──
 class Colors:
     # Backgrounds
-    BG_PRIMARY = "#FAFAFA"
-    BG_SECONDARY = "#F2F2F7"
-    BG_SIDEBAR = "#F0F0F5"
+    BG_PRIMARY = "#FFFFFF"     # White
+    BG_SECONDARY = "#F5F5F5"   # Light Gray 1
+    BG_SIDEBAR = "#F5F5F5"
     BG_CARD = "#FFFFFF"
     BG_HEADER = "#FFFFFF"
 
     # Text
-    TEXT_PRIMARY = "#1D1D1F"
-    TEXT_SECONDARY = "#6E6E73"
-    TEXT_TERTIARY = "#8E8E93"
-    TEXT_ON_ACCENT = "#FFFFFF"
+    TEXT_PRIMARY = "#212121"   # Dark Gray
+    TEXT_SECONDARY = "#757575" # Mid Gray
+    TEXT_TERTIARY = "#9E9E9E"  # Lighter Mid Gray
+    TEXT_ON_ACCENT = "#FFFFFF" # White
 
-    # Accent
-    ACCENT = "#007AFF"
-    ACCENT_HOVER = "#0066D6"
-    ACCENT_PRESSED = "#004EA2"
+    # Accent (Light Blue)
+    ACCENT = "#4A90E2"         # Soft Light Blue
+    ACCENT_HOVER = "#357ABD"   # Slightly darker blue
+    ACCENT_PRESSED = "#2A6496" # Dark blue
 
-    # Status
-    SUCCESS = "#34C759"
-    WARNING = "#FF9500"
-    DANGER = "#FF3B30"
-    DANGER_HOVER = "#D9302A"
+    # Status (Converted to Grayscale)
+    SUCCESS = "#757575"        # Mid Gray
+    WARNING = "#616161"        # Mid-Dark Gray
+    DANGER = "#424242"         # Dark Gray
+    DANGER_HOVER = "#212121"
 
     # Borders
-    BORDER = "#D1D1D6"
-    BORDER_LIGHT = "#E5E5EA"
-    BORDER_FOCUS = "#007AFF"
+    BORDER = "#E0E0E0"         # Light Gray 2
+    BORDER_LIGHT = "#EEEEEE"   # Light Gray 3
+    BORDER_FOCUS = "#4A90E2"   # Light Blue Focus
 
     # Selection
-    SELECTION = "#E8F0FE"
-    SELECTION_ACTIVE = "#D2E3FC"
+    SELECTION = "#EBF4FA"      # Very Light Blue
+    SELECTION_ACTIVE = "#D6EAF8" # Light Blue Tint
 
     # Sidebar
-    SIDEBAR_ITEM_HOVER = "#E8E8ED"
-    SIDEBAR_ITEM_ACTIVE = "#DCE8F8"
-    SIDEBAR_ITEM_ACTIVE_TEXT = "#007AFF"
+    SIDEBAR_ITEM_HOVER = "#EEEEEE" # Light Gray 3
+    SIDEBAR_ITEM_ACTIVE = "#EBF4FA" # Very Light Blue
+    SIDEBAR_ITEM_ACTIVE_TEXT = "#4A90E2" # Light Blue
 
 
 # ── Spacing ──

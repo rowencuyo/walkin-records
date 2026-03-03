@@ -212,8 +212,8 @@ class DashboardPage(QWidget):
         # Action: open record if linked
         if notif.record_id:
             open_btn = QPushButton("Open")
-            open_btn.setFixedHeight(29)
-            open_btn.setMinimumWidth(60)
+            open_btn.setFixedHeight(34)
+            open_btn.setMinimumWidth(65)
             open_btn.clicked.connect(lambda: self.record_selected.emit(notif.record_id))
             layout.addWidget(open_btn)
 

@@ -150,14 +150,14 @@ class NotificationPage(QWidget):
         if show_actions:
             if notif.record_id:
                 open_btn = QPushButton("Open")
-                open_btn.setFixedHeight(29)
-                open_btn.setMinimumWidth(55)
+                open_btn.setFixedHeight(34)
+                open_btn.setMinimumWidth(65)
                 open_btn.clicked.connect(lambda: self.record_selected.emit(notif.record_id))
                 layout.addWidget(open_btn)
 
             dismiss_btn = QPushButton("Dismiss")
-            dismiss_btn.setFixedHeight(29)
-            dismiss_btn.setMinimumWidth(70)
+            dismiss_btn.setFixedHeight(34)
+            dismiss_btn.setMinimumWidth(80)
             dismiss_btn.clicked.connect(
                 lambda checked, nid=notif.id: self._dismiss(nid)
             )
