@@ -1,0 +1,256 @@
+"""
+CRUD, search, filtering, and soft-delete operations for walk-in records.
+"""
+import sqlite3
+from datetime import datetime
+from typing import Optional
+
+from app.database import get_connection
+from app.models import WalkInRecord
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class RecordService:
+    """Service layer for WalkInRecord CRUD operations."""
+
+    # --------------- CREATE ---------------
+    def create_record(self, record: WalkInRecord) -> int:
+        """Insert a new record. Returns the new record ID."""
+        conn = get_connection()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Check duplicate active passport
+        dup = self._check_duplicate_passport(record.passport_number, exclude_id=None)
+        if dup:
+            raise ValueError(
+                f"An active record with passport '{record.passport_number}' already exists"
+            )
+
+        data = record.to_dict()
+        data["created_at"] = now
+        data["updated_at"] = now
+
+        cols = ", ".join(data.keys())
+        placeholders = ", ".join(["?"] * len(data))
+        sql = f"INSERT INTO walkin_records ({cols}) VALUES ({placeholders})"
+
+        try:
+            cursor = conn.execute(sql, list(data.values()))
+            conn.commit()
+            record_id = cursor.lastrowid
+            logger.info("Created record ID=%d, passport=%s", record_id, record.passport_number)
+            return record_id
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Failed to create record: %s", e)
+            raise
+
+    # --------------- READ ---------------
+    def get_record(self, record_id: int) -> Optional[WalkInRecord]:
+        """Fetch a single record by ID."""
+        conn = get_connection()
+        row = conn.execute(
+            "SELECT * FROM walkin_records WHERE id = ?", (record_id,)
+        ).fetchone()
+        if row:
+            return WalkInRecord.from_row(dict(row))
+        return None
+
+    def get_all_records(
+        self,
+        include_inactive: bool = False,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> list[WalkInRecord]:
+        """Fetch records with pagination."""
+        conn = get_connection()
+        if include_inactive:
+            sql = "SELECT * FROM walkin_records ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+            rows = conn.execute(sql, (limit, offset)).fetchall()
+        else:
+            sql = "SELECT * FROM walkin_records WHERE is_active = 1 ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+            rows = conn.execute(sql, (limit, offset)).fetchall()
+        return [WalkInRecord.from_row(dict(r)) for r in rows]
+
+    def get_record_count(self, include_inactive: bool = False) -> int:
+        """Get total record count for pagination."""
+        conn = get_connection()
+        if include_inactive:
+            row = conn.execute("SELECT COUNT(*) as cnt FROM walkin_records").fetchone()
+        else:
+            row = conn.execute(
+                "SELECT COUNT(*) as cnt FROM walkin_records WHERE is_active = 1"
+            ).fetchone()
+        return row["cnt"] if row else 0
+
+    # --------------- SEARCH ---------------
+    def search_records(
+        self,
+        query: str = "",
+        visa_status: str = "",
+        educational_level: str = "",
+        year_level: str = "",
+        include_inactive: bool = False,
+        sort_column: str = "updated_at",
+        sort_order: str = "DESC",
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[WalkInRecord], int]:
+        """
+        Search records with filters. Returns (records, total_count).
+        """
+        conn = get_connection()
+        conditions = []
+        params = []
+
+        if not include_inactive:
+            conditions.append("is_active = 1")
+
+        if query:
+            q = f"%{query}%"
+            conditions.append(
+                "(first_name LIKE ? OR last_name LIKE ? OR middle_name LIKE ? "
+                "OR passport_number LIKE ? "
+                "OR (first_name || ' ' || last_name) LIKE ? "
+                "OR (first_name || ' ' || middle_name || ' ' || last_name) LIKE ? "
+                "OR (last_name || ' ' || first_name) LIKE ?)"
+            )
+            params.extend([q, q, q, q, q, q, q])
+
+        if visa_status:
+            conditions.append("visa_status = ?")
+            params.append(visa_status)
+
+        if educational_level:
+            conditions.append("educational_level = ?")
+            params.append(educational_level)
+
+        if year_level:
+            conditions.append("year_level = ?")
+            params.append(year_level)
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+
+        # Validate sort column
+        allowed_sorts = {
+            "last_name", "first_name", "passport_number", "visa_status",
+            "visa_category", "educational_level", "year_level",
+            "course_program", "created_at", "updated_at",
+        }
+        if sort_column not in allowed_sorts:
+            sort_column = "updated_at"
+        sort_order = "ASC" if sort_order.upper() == "ASC" else "DESC"
+
+        # Count
+        count_sql = f"SELECT COUNT(*) as cnt FROM walkin_records WHERE {where}"
+        count_row = conn.execute(count_sql, params).fetchone()
+        total = count_row["cnt"] if count_row else 0
+
+        # Fetch
+        fetch_sql = (
+            f"SELECT * FROM walkin_records WHERE {where} "
+            f"ORDER BY {sort_column} {sort_order} LIMIT ? OFFSET ?"
+        )
+        rows = conn.execute(fetch_sql, params + [limit, offset]).fetchall()
+        records = [WalkInRecord.from_row(dict(r)) for r in rows]
+
+        return records, total
+
+    # --------------- UPDATE ---------------
+    def update_record(self, record_id: int, record: WalkInRecord) -> bool:
+        """Update an existing record."""
+        conn = get_connection()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Check duplicate passport (exclude self)
+        dup = self._check_duplicate_passport(record.passport_number, exclude_id=record_id)
+        if dup:
+            raise ValueError(
+                f"An active record with passport '{record.passport_number}' already exists"
+            )
+
+        data = record.to_dict()
+        data["updated_at"] = now
+        set_clause = ", ".join(f"{k} = ?" for k in data.keys())
+        sql = f"UPDATE walkin_records SET {set_clause} WHERE id = ?"
+
+        try:
+            cursor = conn.execute(sql, list(data.values()) + [record_id])
+            conn.commit()
+            if cursor.rowcount > 0:
+                logger.info("Updated record ID=%d", record_id)
+                return True
+            return False
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Failed to update record ID=%d: %s", record_id, e)
+            raise
+
+    # --------------- SOFT DELETE / RESTORE ---------------
+    def soft_delete(self, record_id: int) -> bool:
+        """Mark a record as inactive."""
+        conn = get_connection()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            cursor = conn.execute(
+                "UPDATE walkin_records SET is_active = 0, updated_at = ? WHERE id = ?",
+                (now, record_id),
+            )
+            conn.commit()
+            if cursor.rowcount > 0:
+                logger.info("Soft-deleted record ID=%d", record_id)
+                return True
+            return False
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Failed to soft-delete record ID=%d: %s", record_id, e)
+            raise
+
+    def restore(self, record_id: int) -> bool:
+        """Restore a soft-deleted record."""
+        conn = get_connection()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Check if restoring would create a duplicate passport
+        rec = self.get_record(record_id)
+        if rec:
+            dup = self._check_duplicate_passport(rec.passport_number, exclude_id=record_id)
+            if dup:
+                raise ValueError(
+                    f"Cannot restore: an active record with passport '{rec.passport_number}' already exists"
+                )
+
+        try:
+            cursor = conn.execute(
+                "UPDATE walkin_records SET is_active = 1, updated_at = ? WHERE id = ?",
+                (now, record_id),
+            )
+            conn.commit()
+            if cursor.rowcount > 0:
+                logger.info("Restored record ID=%d", record_id)
+                return True
+            return False
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Failed to restore record ID=%d: %s", record_id, e)
+            raise
+
+    # --------------- HELPERS ---------------
+    def _check_duplicate_passport(
+        self, passport_number: str, exclude_id: Optional[int]
+    ) -> bool:
+        """Check if an active record already has this passport number."""
+        conn = get_connection()
+        if exclude_id is not None:
+            row = conn.execute(
+                "SELECT id FROM walkin_records WHERE passport_number = ? AND is_active = 1 AND id != ?",
+                (passport_number, exclude_id),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT id FROM walkin_records WHERE passport_number = ? AND is_active = 1",
+                (passport_number,),
+            ).fetchone()
+        return row is not None

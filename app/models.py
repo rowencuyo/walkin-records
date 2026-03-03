@@ -1,0 +1,155 @@
+"""
+Data models for the Walk-In Records Management System.
+"""
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from typing import Optional
+
+
+@dataclass
+class WalkInRecord:
+    """Represents a walk-in / student record."""
+    # Identity
+    last_name: str = ""
+    first_name: str = ""
+    middle_name: str = ""
+    sex: str = ""
+    date_of_birth: str = ""  # YYYY-MM-DD
+    passport_number: str = ""
+    country_of_citizenship: str = ""
+
+    # Philippine Residential Address
+    street: str = ""
+    barangay: str = ""
+    city_municipality: str = ""
+    province: str = ""
+
+    # Academic & Residency
+    date_of_arrival: str = ""  # YYYY-MM-DD
+    date_start_education: str = ""  # YYYY-MM-DD
+    educational_level: str = ""
+    course_program: str = ""
+    year_level: str = ""
+    semester: str = ""
+
+    # Visa Information
+    visa_category: str = ""
+    visa_grant_date: str = ""  # YYYY-MM-DD
+    visa_validity_date: str = ""  # YYYY-MM-DD
+    visa_status: str = ""
+    remarks: str = ""
+
+    # System fields
+    id: Optional[int] = None
+    is_active: bool = True
+    created_at: str = ""
+    updated_at: str = ""
+
+    @property
+    def full_name(self) -> str:
+        parts = [self.first_name, self.middle_name, self.last_name]
+        return " ".join(p for p in parts if p)
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for database operations."""
+        return {
+            "last_name": self.last_name,
+            "first_name": self.first_name,
+            "middle_name": self.middle_name,
+            "sex": self.sex,
+            "date_of_birth": self.date_of_birth,
+            "passport_number": self.passport_number,
+            "country_of_citizenship": self.country_of_citizenship,
+            "street": self.street,
+            "barangay": self.barangay,
+            "city_municipality": self.city_municipality,
+            "province": self.province,
+            "date_of_arrival": self.date_of_arrival,
+            "date_start_education": self.date_start_education,
+            "educational_level": self.educational_level,
+            "course_program": self.course_program,
+            "year_level": self.year_level,
+            "semester": self.semester,
+            "visa_category": self.visa_category,
+            "visa_grant_date": self.visa_grant_date,
+            "visa_validity_date": self.visa_validity_date,
+            "visa_status": self.visa_status,
+            "remarks": self.remarks,
+            "is_active": 1 if self.is_active else 0,
+        }
+
+    @classmethod
+    def from_row(cls, row: dict) -> "WalkInRecord":
+        """Create a WalkInRecord from a database row dictionary."""
+        return cls(
+            id=row.get("id"),
+            last_name=row.get("last_name", ""),
+            first_name=row.get("first_name", ""),
+            middle_name=row.get("middle_name", ""),
+            sex=row.get("sex", ""),
+            date_of_birth=row.get("date_of_birth", ""),
+            passport_number=row.get("passport_number", ""),
+            country_of_citizenship=row.get("country_of_citizenship", ""),
+            street=row.get("street", ""),
+            barangay=row.get("barangay", ""),
+            city_municipality=row.get("city_municipality", ""),
+            province=row.get("province", ""),
+            date_of_arrival=row.get("date_of_arrival", ""),
+            date_start_education=row.get("date_start_education", ""),
+            educational_level=row.get("educational_level", ""),
+            course_program=row.get("course_program", ""),
+            year_level=row.get("year_level", ""),
+            semester=row.get("semester", ""),
+            visa_category=row.get("visa_category", ""),
+            visa_grant_date=row.get("visa_grant_date", ""),
+            visa_validity_date=row.get("visa_validity_date", ""),
+            visa_status=row.get("visa_status", ""),
+            remarks=row.get("remarks", ""),
+            is_active=bool(row.get("is_active", 1)),
+            created_at=row.get("created_at", ""),
+            updated_at=row.get("updated_at", ""),
+        )
+
+
+@dataclass
+class Document:
+    """Represents an uploaded document associated with a record."""
+    id: Optional[int] = None
+    record_id: int = 0
+    document_type: str = ""
+    file_path: str = ""
+    file_name: str = ""
+    file_type: str = ""
+    file_size: int = 0
+    upload_date: str = ""
+
+    @classmethod
+    def from_row(cls, row: dict) -> "Document":
+        return cls(
+            id=row.get("id"),
+            record_id=row.get("record_id", 0),
+            document_type=row.get("document_type", ""),
+            file_path=row.get("file_path", ""),
+            file_name=row.get("file_name", ""),
+            file_type=row.get("file_type", ""),
+            file_size=row.get("file_size", 0),
+            upload_date=row.get("upload_date", ""),
+        )
+
+
+@dataclass
+class ProfilePicture:
+    """Represents a profile picture for a record."""
+    id: Optional[int] = None
+    record_id: int = 0
+    file_path: str = ""
+    upload_date: str = ""
+
+    @classmethod
+    def from_row(cls, row: dict) -> "ProfilePicture":
+        return cls(
+            id=row.get("id"),
+            record_id=row.get("record_id", 0),
+            file_path=row.get("file_path", ""),
+            upload_date=row.get("upload_date", ""),
+        )
