@@ -58,6 +58,7 @@ class RecordCard(QFrame):
         # Small avatar
         avatar = QLabel()
         avatar.setFixedSize(40, 40)
+        avatar.setStyleSheet("background: transparent;")
         if pic_path:
             pix = QPixmap(pic_path).scaled(40, 40, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
             x = (pix.width() - 40) // 2
@@ -74,11 +75,23 @@ class RecordCard(QFrame):
             painter.end()
             avatar.setPixmap(result)
         else:
-            avatar.setText("?")
-            avatar.setAlignment(Qt.AlignCenter)
-            avatar.setStyleSheet(
-                "background-color: #E5E5EA; border-radius: 20px; color: #8E8E93; font-size: 18px; font-weight: 600;"
-            )
+            from PySide6.QtGui import QColor
+            result = QPixmap(40, 40)
+            result.fill(Qt.transparent)
+            painter = QPainter(result)
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor("#E5E5EA"))
+            painter.drawEllipse(0, 0, 40, 40)
+            font = painter.font()
+            font.setPointSize(14)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor("#8E8E93"))
+            painter.drawText(result.rect(), Qt.AlignCenter, "?")
+            painter.end()
+            avatar.setPixmap(result)
+
         top.addWidget(avatar)
 
         name_col = QVBoxLayout()
