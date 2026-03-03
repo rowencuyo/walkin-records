@@ -1,7 +1,7 @@
 """
-Add / Edit record form with full validation.
+Add / Edit record form with full validation, autosave drafts, and unsaved changes guard.
 """
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit,
     QComboBox, QTextEdit, QLabel, QPushButton, QScrollArea,
@@ -14,12 +14,15 @@ from app.constants import (
 )
 from app.models import WalkInRecord
 from app.services.record_service import RecordService
+from app.services.draft_service import DraftService
 from app.utils.validators import (
     validate_required, validate_date_required, validate_date, validate_passport,
 )
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+AUTOSAVE_INTERVAL_MS = 30_000  # 30 seconds
 
 
 class RecordForm(QWidget):
@@ -32,12 +35,102 @@ class RecordForm(QWidget):
         super().__init__(parent)
         self._record_id = record_id
         self._record_service = RecordService()
+        self._draft_service = DraftService()
         self._fields: dict[str, QWidget] = {}
         self._error_labels: dict[str, QLabel] = {}
+        self._initial_values: dict[str, str] = {}
         self._setup_ui()
 
         if record_id:
             self._load_record()
+
+        # Snapshot initial values for dirty tracking
+        self._snapshot_initial()
+
+        # Check for existing draft and offer restore
+        self._check_draft()
+
+        # Autosave timer
+        self._autosave_timer = QTimer()
+        self._autosave_timer.setInterval(AUTOSAVE_INTERVAL_MS)
+        self._autosave_timer.timeout.connect(self._autosave_draft)
+        self._autosave_timer.start()
+
+    # ── Draft key ──
+
+    @property
+    def _draft_key(self) -> str:
+        if self._record_id:
+            return f"edit_{self._record_id}"
+        return "new"
+
+    # ── Dirty tracking ──
+
+    def _snapshot_initial(self):
+        """Capture current field values as the baseline for dirty checking."""
+        self._initial_values = {key: self._get_value(key) for key in self._fields}
+
+    def has_unsaved_changes(self) -> bool:
+        """Return True if any field value differs from the initial snapshot."""
+        for key in self._fields:
+            if self._get_value(key) != self._initial_values.get(key, ""):
+                return True
+        return False
+
+    def confirm_discard(self) -> bool:
+        """Show a Save/Discard/Cancel dialog. Returns True if user chose to proceed (discard)."""
+        if not self.has_unsaved_changes():
+            return True
+
+        reply = QMessageBox.question(
+            self, "Unsaved Changes",
+            "You have unsaved changes. Do you want to discard them?",
+            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            QMessageBox.Cancel,
+        )
+        if reply == QMessageBox.Save:
+            self._on_save()
+            return True
+        elif reply == QMessageBox.Discard:
+            self._delete_draft()
+            return True
+        return False  # Cancel
+
+    # ── Autosave Drafts ──
+
+    def _check_draft(self):
+        """If a draft exists, prompt user to restore or discard."""
+        draft = self._draft_service.load_draft(self._draft_key)
+        if draft:
+            reply = QMessageBox.question(
+                self, "Draft Found",
+                "An autosaved draft was found for this form.\n"
+                "Would you like to restore it?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                self._restore_draft(draft)
+            else:
+                self._draft_service.delete_draft(self._draft_key)
+
+    def _restore_draft(self, draft: dict):
+        """Populate form fields from a draft dictionary."""
+        for key, value in draft.items():
+            if key in self._fields:
+                self._set_value(key, value)
+
+    def _autosave_draft(self):
+        """Save current form data as a draft if there are changes."""
+        if not self.has_unsaved_changes():
+            return
+        data = {key: self._get_value(key) for key in self._fields}
+        self._draft_service.save_draft(self._draft_key, data)
+
+    def _delete_draft(self):
+        """Remove the draft for this form."""
+        self._draft_service.delete_draft(self._draft_key)
+
+    # ── UI Setup ──
 
     def _setup_ui(self):
         outer = QVBoxLayout(self)
@@ -54,7 +147,7 @@ class RecordForm(QWidget):
 
         cancel_btn = QPushButton("Cancel")
         cancel_btn.setFixedHeight(38)
-        cancel_btn.clicked.connect(self.cancelled.emit)
+        cancel_btn.clicked.connect(self._on_cancel)
         header.addWidget(cancel_btn)
 
         save_btn = QPushButton("Save Record")
@@ -176,6 +269,8 @@ class RecordForm(QWidget):
         group.setLayout(layout)
         return group
 
+    # ── Field accessors ──
+
     def _get_value(self, key: str) -> str:
         """Get value from a field widget."""
         widget = self._fields.get(key)
@@ -207,6 +302,8 @@ class RecordForm(QWidget):
                 widget.setCurrentText(value)
         elif isinstance(widget, QTextEdit):
             widget.setPlainText(value)
+
+    # ── Validation ──
 
     def _show_error(self, key: str, message: str):
         """Show inline error for a field."""
@@ -268,6 +365,8 @@ class RecordForm(QWidget):
 
         return valid
 
+    # ── Build / Load ──
+
     def _build_record(self) -> WalkInRecord:
         """Build a WalkInRecord from form values."""
         return WalkInRecord(
@@ -308,6 +407,8 @@ class RecordForm(QWidget):
             if key in self._fields:
                 self._set_value(key, str(value) if value else "")
 
+    # ── Save / Cancel ──
+
     def _on_save(self):
         """Validate and save the record."""
         if not self._validate():
@@ -322,9 +423,18 @@ class RecordForm(QWidget):
             else:
                 record_id = self._record_service.create_record(record)
 
+            # Delete draft on successful save
+            self._delete_draft()
+            self._autosave_timer.stop()
             self.saved.emit(record_id)
         except ValueError as e:
             QMessageBox.warning(self, "Validation Error", str(e))
         except Exception as e:
             logger.error("Failed to save record: %s", e)
             QMessageBox.critical(self, "Error", f"Failed to save record:\n{e}")
+
+    def _on_cancel(self):
+        """Handle cancel with unsaved changes check."""
+        if self.confirm_discard():
+            self._autosave_timer.stop()
+            self.cancelled.emit()

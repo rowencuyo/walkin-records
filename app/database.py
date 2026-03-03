@@ -15,13 +15,14 @@ DB_PATH = DATA_DIR / "walkin_records.db"
 DOCUMENTS_DIR = DATA_DIR / "documents"
 PROFILE_PICS_DIR = DATA_DIR / "profile_pictures"
 LOGS_DIR = DATA_DIR / "logs"
+DRAFTS_DIR = DATA_DIR / "drafts"
 
 _connection: sqlite3.Connection | None = None
 
 
 def _ensure_dirs():
     """Create data directories if they don't exist."""
-    for d in (DATA_DIR, DOCUMENTS_DIR, PROFILE_PICS_DIR, LOGS_DIR):
+    for d in (DATA_DIR, DOCUMENTS_DIR, PROFILE_PICS_DIR, LOGS_DIR, DRAFTS_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
 

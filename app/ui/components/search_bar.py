@@ -32,7 +32,7 @@ class SearchBar(QWidget):
 
         # Search input
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by name or passport...")
+        self.search_input.setPlaceholderText("Search anything — name, passport, country, visa, course...")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.setMinimumWidth(250)
         self.search_input.textChanged.connect(self._on_text_changed)

@@ -1,5 +1,6 @@
 """
 Record List page with Table View and Card View toggle.
+Integrates search proxy, completeness indicators, and read-only mode.
 """
 from PySide6.QtCore import Qt, Signal, QSize, QTimer
 from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QIcon
@@ -23,7 +24,8 @@ class RecordCard(QFrame):
     """Individual card for the card view."""
     clicked = Signal(int)
 
-    def __init__(self, record: WalkInRecord, pic_path: str | None = None, parent=None):
+    def __init__(self, record: WalkInRecord, pic_path: str | None = None,
+                 completeness: str = "", parent=None):
         super().__init__(parent)
         self._record_id = record.id
         self.setObjectName("recordCard")
@@ -40,15 +42,16 @@ class RecordCard(QFrame):
                 background-color: {Colors.SELECTION};
             }}
         """)
-        self._setup_ui(record, pic_path)
+        self._setup_ui(record, pic_path, completeness)
 
-    def _setup_ui(self, record: WalkInRecord, pic_path: str | None):
+    def _setup_ui(self, record: WalkInRecord, pic_path: str | None,
+                  completeness: str):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(6)
         layout.setAlignment(Qt.AlignTop)
 
-        # Top row: avatar + name
+        # Top row: avatar + name + completeness badge
         top = QHBoxLayout()
         top.setSpacing(10)
 
@@ -89,6 +92,26 @@ class RecordCard(QFrame):
         passport_label.setStyleSheet("font-size: 14px; color: #6E6E73;")
         name_col.addWidget(passport_label)
         top.addLayout(name_col, stretch=1)
+
+        # Completeness badge
+        if completeness == "complete":
+            badge = QLabel("OK")
+            badge.setStyleSheet(
+                "background-color: #34C759; color: white; padding: 2px 8px; "
+                "border-radius: 4px; font-size: 11px; font-weight: 600;"
+            )
+            badge.setFixedHeight(20)
+            top.addWidget(badge, alignment=Qt.AlignTop)
+        elif completeness in ("missing_fields", "missing_documents"):
+            badge_text = "Missing Fields" if completeness == "missing_fields" else "No Docs"
+            badge = QLabel(badge_text)
+            badge.setStyleSheet(
+                "background-color: #FF9500; color: white; padding: 2px 8px; "
+                "border-radius: 4px; font-size: 11px; font-weight: 600;"
+            )
+            badge.setFixedHeight(20)
+            top.addWidget(badge, alignment=Qt.AlignTop)
+
         layout.addLayout(top)
 
         # Divider
@@ -145,7 +168,9 @@ class RecordListPage(QWidget):
         self._year_level = ""
         self._include_inactive = False
         self._current_records: list[WalkInRecord] = []
+        self._doc_counts: dict[int, int] = {}
         self._pic_path_cache: dict[int, str | None] = {}
+        self._completeness_cache: dict[int, str] = {}
 
         # Debounce timer for card rebuild on resize
         self._resize_timer = QTimer()
@@ -184,11 +209,11 @@ class RecordListPage(QWidget):
         header.addWidget(self._card_btn)
 
         # Add button
-        add_btn = QPushButton("+ Add Record")
-        add_btn.setObjectName("primaryButton")
-        add_btn.setFixedHeight(38)
-        add_btn.clicked.connect(self.add_record_requested.emit)
-        header.addWidget(add_btn)
+        self._add_btn = QPushButton("+ Add Record")
+        self._add_btn.setObjectName("primaryButton")
+        self._add_btn.setFixedHeight(38)
+        self._add_btn.clicked.connect(self.add_record_requested.emit)
+        header.addWidget(self._add_btn)
 
         layout.addLayout(header)
 
@@ -219,6 +244,11 @@ class RecordListPage(QWidget):
         self._table_view.horizontalHeader().setMinimumSectionSize(80)
         self._table_view.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self._table_view.doubleClicked.connect(self._on_table_double_click)
+
+        # Set completeness column width (narrow)
+        self._table_view.horizontalHeader().resizeSection(0, 40)
+        self._table_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+
         self._view_stack.addWidget(self._table_view)
 
         # --- Card View ---
@@ -268,7 +298,13 @@ class RecordListPage(QWidget):
 
         layout.addLayout(pag)
 
-    # ── View Toggle ──
+    # -- Read-Only Mode --
+
+    def set_read_only(self, enabled: bool):
+        """Show or hide the add button based on read-only mode."""
+        self._add_btn.setVisible(not enabled)
+
+    # -- View Toggle --
 
     def _switch_view(self, index: int):
         self._view_stack.setCurrentIndex(index)
@@ -277,7 +313,7 @@ class RecordListPage(QWidget):
         if index == 1:
             self._populate_cards()
 
-    # ── Data Loading ──
+    # -- Data Loading --
 
     def load_data(self):
         """Load records from database."""
@@ -293,7 +329,20 @@ class RecordListPage(QWidget):
         )
         self._current_records = records
         self._total_count = total
-        self._table_model.set_data(records, total)
+
+        # Batch-load document counts for completeness
+        record_ids = [r.id for r in records if r.id is not None]
+        self._doc_counts = self._record_service.get_document_counts(record_ids)
+
+        # Compute completeness
+        from app.services.completeness import check_completeness
+        self._completeness_cache = {}
+        for r in records:
+            doc_count = self._doc_counts.get(r.id, 0)
+            status, _ = check_completeness(r, doc_count)
+            self._completeness_cache[r.id] = status
+
+        self._table_model.set_data(records, total, self._doc_counts)
         self._update_pagination()
 
         if self._view_stack.currentIndex() == 1:
@@ -316,7 +365,8 @@ class RecordListPage(QWidget):
             if record.id not in self._pic_path_cache:
                 self._pic_path_cache[record.id] = self._image_service.get_profile_picture_path(record.id)
             pic_path = self._pic_path_cache[record.id]
-            card = RecordCard(record, pic_path)
+            completeness = self._completeness_cache.get(record.id, "")
+            card = RecordCard(record, pic_path, completeness)
             card.clicked.connect(self.record_selected.emit)
             row = i // cols
             col = i % cols
@@ -331,7 +381,7 @@ class RecordListPage(QWidget):
         if self._view_stack.currentIndex() == 1:
             self._resize_timer.start()
 
-    # ── Pagination ──
+    # -- Pagination --
 
     def _update_pagination(self):
         total_pages = max(1, (self._total_count + self._page_size - 1) // self._page_size)
@@ -357,7 +407,7 @@ class RecordListPage(QWidget):
         self._current_page = 0
         self.load_data()
 
-    # ── Search ──
+    # -- Search --
 
     def _on_search_changed(self, query, visa_status, edu_level, year_level, include_inactive):
         self._query = query
@@ -366,9 +416,13 @@ class RecordListPage(QWidget):
         self._year_level = year_level
         self._include_inactive = include_inactive
         self._current_page = 0
+
+        # Also apply client-side instant filter on the proxy
+        self._proxy_model.set_search_text(query)
+
         self.load_data()
 
-    # ── Events ──
+    # -- Events --
 
     def _on_table_double_click(self, index):
         source_index = self._proxy_model.mapToSource(index)

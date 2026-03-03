@@ -1,6 +1,7 @@
 """
-Backup / Restore page.
+Backup / Restore page with timestamp tracking.
 """
+import json
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,8 @@ from app.database import DATA_DIR, DB_PATH, close_connection, initialize_databas
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+BACKUP_META_FILE = DATA_DIR / "backup_meta.json"
 
 
 class BackupPage(QWidget):
@@ -63,6 +66,9 @@ class BackupPage(QWidget):
         self._data_dir_label = QLabel(str(DATA_DIR))
         self._data_dir_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         info_layout.addRow(QLabel("Data directory:"), self._data_dir_label)
+
+        self._last_backup_label = QLabel(self._get_last_backup_text())
+        info_layout.addRow(QLabel("Last backup:"), self._last_backup_label)
 
         backup_layout.addLayout(info_layout)
 
@@ -134,6 +140,8 @@ class BackupPage(QWidget):
             # Copy entire data directory
             shutil.copytree(str(DATA_DIR), str(backup_dir))
             self._db_size_label.setText(self._get_db_size())
+            self._save_backup_timestamp()
+            self._last_backup_label.setText(self._get_last_backup_text())
             QMessageBox.information(
                 self, "Backup Complete",
                 f"Backup saved to:\n{backup_dir}"
@@ -188,3 +196,29 @@ class BackupPage(QWidget):
         except Exception as e:
             logger.error("Restore failed: %s", e)
             QMessageBox.critical(self, "Restore Failed", f"Error: {e}")
+
+    def _save_backup_timestamp(self):
+        """Record the current time as the last backup timestamp."""
+        try:
+            with open(BACKUP_META_FILE, "w") as f:
+                json.dump({"last_backup": datetime.now().isoformat()}, f)
+        except Exception as e:
+            logger.warning("Failed to save backup timestamp: %s", e)
+
+    def _get_last_backup_text(self) -> str:
+        """Get a human-readable last backup string."""
+        try:
+            if BACKUP_META_FILE.exists():
+                with open(BACKUP_META_FILE, "r") as f:
+                    meta = json.load(f)
+                ts = datetime.fromisoformat(meta.get("last_backup", ""))
+                days_ago = (datetime.now() - ts).days
+                if days_ago == 0:
+                    return f"Today ({ts.strftime('%H:%M')})"
+                elif days_ago == 1:
+                    return f"Yesterday ({ts.strftime('%Y-%m-%d')})"
+                else:
+                    return f"{days_ago} days ago ({ts.strftime('%Y-%m-%d')})"
+        except Exception:
+            pass
+        return "Never"

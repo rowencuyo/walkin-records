@@ -66,4 +66,6 @@ data/logs/*
 !data/logs/.gitkeep
 data/profile_pictures/*
 !data/profile_pictures/.gitkeep
+data/drafts/*
+!data/drafts/.gitkeep
 *.log

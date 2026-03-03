@@ -85,6 +85,19 @@ class RecordService:
             ).fetchone()
         return row["cnt"] if row else 0
 
+    def get_document_counts(self, record_ids: list[int]) -> dict[int, int]:
+        """Get document counts for multiple records in one query."""
+        if not record_ids:
+            return {}
+        conn = get_connection()
+        placeholders = ",".join("?" * len(record_ids))
+        sql = (
+            f"SELECT record_id, COUNT(*) as cnt FROM documents "
+            f"WHERE record_id IN ({placeholders}) GROUP BY record_id"
+        )
+        rows = conn.execute(sql, record_ids).fetchall()
+        return {row["record_id"]: row["cnt"] for row in rows}
+
     # --------------- SEARCH ---------------
     def search_records(
         self,

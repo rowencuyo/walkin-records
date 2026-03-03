@@ -1,13 +1,17 @@
 """
 QAbstractTableModel for walk-in records.
-Uses server-side pagination — data is loaded in pages from the database.
+Uses server-side pagination -- data is loaded in pages from the database.
+Provides custom roles for search and completeness.
 """
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
 
 from app.models import WalkInRecord
 
+SEARCH_ROLE = Qt.UserRole + 1
+COMPLETENESS_ROLE = Qt.UserRole + 2
 
 COLUMNS = [
+    ("completeness", ""),
     ("full_name", "Name"),
     ("passport_number", "Passport"),
     ("visa_category", "Visa Category"),
@@ -26,15 +30,33 @@ class RecordTableModel(QAbstractTableModel):
         super().__init__(parent)
         self._records: list[WalkInRecord] = []
         self._total_count: int = 0
+        self._doc_counts: dict[int, int] = {}  # record_id -> document count
+        self._completeness: dict[int, str] = {}  # record_id -> status
 
-    # ── Data interface ──
+    # -- Data interface --
 
-    def set_data(self, records: list[WalkInRecord], total_count: int):
+    def set_data(
+        self,
+        records: list[WalkInRecord],
+        total_count: int,
+        doc_counts: dict[int, int] | None = None,
+    ):
         """Replace current data."""
         self.beginResetModel()
         self._records = records
         self._total_count = total_count
+        self._doc_counts = doc_counts or {}
+        self._compute_completeness()
         self.endResetModel()
+
+    def _compute_completeness(self):
+        """Pre-compute completeness status for all records."""
+        from app.services.completeness import check_completeness
+        self._completeness = {}
+        for r in self._records:
+            doc_count = self._doc_counts.get(r.id, 0)
+            status, _ = check_completeness(r, doc_count)
+            self._completeness[r.id] = status
 
     def get_record(self, row: int) -> WalkInRecord | None:
         if 0 <= row < len(self._records):
@@ -50,7 +72,7 @@ class RecordTableModel(QAbstractTableModel):
     def total_count(self) -> int:
         return self._total_count
 
-    # ── QAbstractTableModel implementation ──
+    # -- QAbstractTableModel implementation --
 
     def rowCount(self, parent=QModelIndex()):
         return len(self._records)
@@ -70,15 +92,51 @@ class RecordTableModel(QAbstractTableModel):
         col_key = COLUMNS[index.column()][0]
 
         if role == Qt.DisplayRole:
+            if col_key == "completeness":
+                status = self._completeness.get(record.id, "")
+                if status == "complete":
+                    return "OK"
+                elif status == "missing_fields":
+                    return "!!"
+                elif status == "missing_documents":
+                    return "DOC"
+                return ""
             if col_key == "full_name":
                 return record.full_name or ""
             return getattr(record, col_key, "") or ""
 
+        if role == Qt.ForegroundRole:
+            if col_key == "completeness":
+                status = self._completeness.get(record.id, "")
+                from PySide6.QtGui import QColor
+                if status == "complete":
+                    return QColor("#34C759")
+                elif status in ("missing_fields", "missing_documents"):
+                    return QColor("#FF9500")
+            return None
+
         if role == Qt.TextAlignmentRole:
+            if col_key == "completeness":
+                return Qt.AlignCenter | Qt.AlignVCenter
             return Qt.AlignLeft | Qt.AlignVCenter
 
         if role == Qt.UserRole:
             return record.id
+
+        if role == SEARCH_ROLE:
+            # Composite search string for proxy model filtering
+            parts = [
+                record.first_name, record.middle_name, record.last_name,
+                record.passport_number, record.country_of_citizenship,
+                record.course_program, record.visa_category, record.visa_status,
+                record.educational_level, record.year_level,
+                record.city_municipality, record.province, record.remarks,
+                record.full_name,
+            ]
+            return " ".join(p for p in parts if p)
+
+        if role == COMPLETENESS_ROLE:
+            return self._completeness.get(record.id, "")
 
         return None
 
@@ -91,6 +149,8 @@ class RecordTableModel(QAbstractTableModel):
         """Sort by column. Emits layoutChanged."""
         if 0 <= column < len(COLUMNS):
             col_key = COLUMNS[column][0]
+            if col_key == "completeness":
+                return  # Don't sort by indicator
             reverse = order == Qt.DescendingOrder
             self.layoutAboutToBeChanged.emit()
             if col_key == "full_name":

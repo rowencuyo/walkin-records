@@ -128,3 +128,22 @@ class DocumentService:
         if row:
             return Document.from_row(dict(row))
         return None
+
+    def relocate_document(self, doc_id: int, new_path: str) -> bool:
+        """Update the file path of a document (for relocated files)."""
+        conn = get_connection()
+        p = Path(new_path)
+        if not p.exists():
+            return False
+        try:
+            conn.execute(
+                "UPDATE documents SET file_path = ?, file_name = ? WHERE id = ?",
+                (str(p), p.name, doc_id),
+            )
+            conn.commit()
+            logger.info("Relocated document ID=%d to %s", doc_id, new_path)
+            return True
+        except Exception as e:
+            conn.rollback()
+            logger.error("Failed to relocate document ID=%d: %s", doc_id, e)
+            return False
