@@ -396,12 +396,6 @@ class ProfileView(QWidget):
         if reply == QMessageBox.Yes:
             try:
                 self._document_service.delete_document(doc.id)
-                # Push undo action
-                self.undo_requested.emit(
-                    "document_delete",
-                    f"Delete {doc.document_type}",
-                    lambda: None,  # Document file already deleted, no undo for file
-                )
                 self._load_data()
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to delete document:\n{e}")

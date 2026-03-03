@@ -56,6 +56,9 @@ class RecordForm(QWidget):
         self._autosave_timer.timeout.connect(self._autosave_draft)
         self._autosave_timer.start()
 
+        # Stop timer when widget is destroyed
+        self.destroyed.connect(self._autosave_timer.stop)
+
     # ── Draft key ──
 
     @property
@@ -89,8 +92,7 @@ class RecordForm(QWidget):
             QMessageBox.Cancel,
         )
         if reply == QMessageBox.Save:
-            self._on_save()
-            return True
+            return self._on_save()  # Only proceed if save succeeded
         elif reply == QMessageBox.Discard:
             self._delete_draft()
             return True
@@ -413,10 +415,10 @@ class RecordForm(QWidget):
 
     # ── Save / Cancel ──
 
-    def _on_save(self):
-        """Validate and save the record."""
+    def _on_save(self) -> bool:
+        """Validate and save the record. Returns True if save succeeded."""
         if not self._validate():
-            return
+            return False
 
         record = self._build_record()
 
@@ -431,11 +433,14 @@ class RecordForm(QWidget):
             self._delete_draft()
             self._autosave_timer.stop()
             self.saved.emit(record_id)
+            return True
         except ValueError as e:
             QMessageBox.warning(self, "Validation Error", str(e))
+            return False
         except Exception as e:
             logger.error("Failed to save record: %s", e)
             QMessageBox.critical(self, "Error", f"Failed to save record:\n{e}")
+            return False
 
     def _on_cancel(self):
         """Handle cancel with unsaved changes check."""

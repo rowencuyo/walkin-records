@@ -134,7 +134,7 @@ class BackupPage(QWidget):
             return
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_dir = Path(dest_dir) / f"walkin_backup_{timestamp}"
+        backup_dir = Path(dest_dir) / f"archivium_backup_{timestamp}"
 
         try:
             # Copy entire data directory
