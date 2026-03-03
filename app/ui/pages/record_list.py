@@ -260,8 +260,8 @@ class RecordListPage(QWidget):
         self._table_view.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self._table_view.doubleClicked.connect(self._on_table_double_click)
 
-        # Set completeness column width (narrow)
-        self._table_view.horizontalHeader().resizeSection(0, 40)
+        # Set Document column width
+        self._table_view.horizontalHeader().resizeSection(0, 80)
         self._table_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
 
         self._view_stack.addWidget(self._table_view)

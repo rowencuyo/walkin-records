@@ -149,15 +149,28 @@ class RecordTableModel(QAbstractTableModel):
             return COLUMNS[section][1]
         return None
 
+    # Priority order for completeness sorting
+    _COMPLETENESS_ORDER = {
+        "complete": 1,
+        "missing_fields": 2,
+        "incomplete_documents": 3,
+        "no_documents": 4,
+    }
+
     def sort(self, column, order=Qt.AscendingOrder):
         """Sort by column. Emits layoutChanged."""
         if 0 <= column < len(COLUMNS):
             col_key = COLUMNS[column][0]
-            if col_key == "completeness":
-                return  # Don't sort by indicator
             reverse = order == Qt.DescendingOrder
             self.layoutAboutToBeChanged.emit()
-            if col_key == "full_name":
+            if col_key == "completeness":
+                self._records.sort(
+                    key=lambda r: self._COMPLETENESS_ORDER.get(
+                        self._completeness.get(r.id, ""), 99
+                    ),
+                    reverse=reverse,
+                )
+            elif col_key == "full_name":
                 self._records.sort(
                     key=lambda r: r.full_name.lower(), reverse=reverse
                 )
