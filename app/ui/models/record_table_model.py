@@ -62,13 +62,17 @@ class RecordTableModel(QAbstractTableModel):
         if not index.isValid():
             return None
 
-        record = self._records[index.row()]
+        row = index.row()
+        if row < 0 or row >= len(self._records):
+            return None
+
+        record = self._records[row]
         col_key = COLUMNS[index.column()][0]
 
         if role == Qt.DisplayRole:
             if col_key == "full_name":
-                return record.full_name
-            return getattr(record, col_key, "")
+                return record.full_name or ""
+            return getattr(record, col_key, "") or ""
 
         if role == Qt.TextAlignmentRole:
             return Qt.AlignLeft | Qt.AlignVCenter

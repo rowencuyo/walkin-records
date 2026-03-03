@@ -109,15 +109,24 @@ class RecordService:
             conditions.append("is_active = 1")
 
         if query:
-            q = f"%{query}%"
-            conditions.append(
-                "(first_name LIKE ? OR last_name LIKE ? OR middle_name LIKE ? "
-                "OR passport_number LIKE ? "
-                "OR (first_name || ' ' || last_name) LIKE ? "
-                "OR (first_name || ' ' || middle_name || ' ' || last_name) LIKE ? "
-                "OR (last_name || ' ' || first_name) LIKE ?)"
+            # Multi-word AND: each word must match at least one field
+            searchable_fields = (
+                "first_name", "last_name", "middle_name", "passport_number",
+                "country_of_citizenship", "course_program", "visa_category",
+                "visa_status", "educational_level", "year_level",
+                "city_municipality", "province", "remarks",
+                "(first_name || ' ' || last_name)",
+                "(first_name || ' ' || middle_name || ' ' || last_name)",
+                "(last_name || ' ' || first_name)",
             )
-            params.extend([q, q, q, q, q, q, q])
+            words = query.split()
+            for word in words:
+                w = f"%{word}%"
+                word_conditions = " OR ".join(
+                    f"{field} LIKE ?" for field in searchable_fields
+                )
+                conditions.append(f"({word_conditions})")
+                params.extend([w] * len(searchable_fields))
 
         if visa_status:
             conditions.append("visa_status = ?")

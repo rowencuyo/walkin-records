@@ -1,7 +1,7 @@
 """
 Record List page with Table View and Card View toggle.
 """
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QTimer
 from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QIcon
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableView, QHeaderView,
@@ -145,6 +145,13 @@ class RecordListPage(QWidget):
         self._year_level = ""
         self._include_inactive = False
         self._current_records: list[WalkInRecord] = []
+        self._pic_path_cache: dict[int, str | None] = {}
+
+        # Debounce timer for card rebuild on resize
+        self._resize_timer = QTimer()
+        self._resize_timer.setSingleShot(True)
+        self._resize_timer.setInterval(300)
+        self._resize_timer.timeout.connect(self._populate_cards)
 
         self._setup_ui()
         self.load_data()
@@ -305,7 +312,10 @@ class RecordListPage(QWidget):
         for c in range(cols):
             self._card_layout.setColumnStretch(c, 1)
         for i, record in enumerate(self._current_records):
-            pic_path = self._image_service.get_profile_picture_path(record.id)
+            # Use cached profile picture path to avoid repeated file I/O
+            if record.id not in self._pic_path_cache:
+                self._pic_path_cache[record.id] = self._image_service.get_profile_picture_path(record.id)
+            pic_path = self._pic_path_cache[record.id]
             card = RecordCard(record, pic_path)
             card.clicked.connect(self.record_selected.emit)
             row = i // cols
@@ -319,7 +329,7 @@ class RecordListPage(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if self._view_stack.currentIndex() == 1:
-            self._populate_cards()
+            self._resize_timer.start()
 
     # ── Pagination ──
 
