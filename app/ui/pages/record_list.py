@@ -95,16 +95,31 @@ class RecordCard(QFrame):
 
         # Completeness badge
         if completeness == "complete":
-            badge = QLabel("OK")
+            badge = QLabel("Complete Docs")
             badge.setStyleSheet(
                 "background-color: #34C759; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
             )
             badge.setFixedHeight(20)
             top.addWidget(badge, alignment=Qt.AlignTop)
-        elif completeness in ("missing_fields", "missing_documents"):
-            badge_text = "Missing Fields" if completeness == "missing_fields" else "Incomplete Docs"
-            badge = QLabel(badge_text)
+        elif completeness == "missing_fields":
+            badge = QLabel("Missing Fields")
+            badge.setStyleSheet(
+                "background-color: #FF9500; color: white; padding: 2px 8px; "
+                "border-radius: 4px; font-size: 11px; font-weight: 600;"
+            )
+            badge.setFixedHeight(20)
+            top.addWidget(badge, alignment=Qt.AlignTop)
+        elif completeness == "incomplete_documents":
+            badge = QLabel("Incomplete Docs")
+            badge.setStyleSheet(
+                "background-color: #FF9500; color: white; padding: 2px 8px; "
+                "border-radius: 4px; font-size: 11px; font-weight: 600;"
+            )
+            badge.setFixedHeight(20)
+            top.addWidget(badge, alignment=Qt.AlignTop)
+        elif completeness == "no_documents":
+            badge = QLabel("No Docs")
             badge.setStyleSheet(
                 "background-color: #FF9500; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"

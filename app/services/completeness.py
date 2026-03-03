@@ -36,7 +36,8 @@ def check_completeness(
         (status, missing_items) where status is one of:
         - "complete"
         - "missing_fields"
-        - "missing_documents"
+        - "no_documents"
+        - "incomplete_documents"
     """
     missing = []
 
@@ -53,6 +54,9 @@ def check_completeness(
     uploaded = set(document_types or [])
     missing_docs = [dt for dt in REQUIRED_DOCUMENT_TYPES if dt not in uploaded]
     if missing_docs:
-        return "missing_documents", [f"Document: {dt}" for dt in missing_docs]
+        if document_count == 0:
+            return "no_documents", [f"Document: {dt}" for dt in missing_docs]
+        else:
+            return "incomplete_documents", [f"Document: {dt}" for dt in missing_docs]
 
     return "complete", []

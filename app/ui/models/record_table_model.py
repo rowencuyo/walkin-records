@@ -98,8 +98,10 @@ class RecordTableModel(QAbstractTableModel):
                     return "OK"
                 elif status == "missing_fields":
                     return "!!"
-                elif status == "missing_documents":
+                elif status == "incomplete_documents":
                     return "DOC"
+                elif status == "no_documents":
+                    return "---"
                 return ""
             if col_key == "full_name":
                 return record.full_name or ""
@@ -111,7 +113,7 @@ class RecordTableModel(QAbstractTableModel):
                 from PySide6.QtGui import QColor
                 if status == "complete":
                     return QColor("#34C759")
-                elif status in ("missing_fields", "missing_documents"):
+                elif status in ("missing_fields", "incomplete_documents", "no_documents"):
                     return QColor("#FF9500")
             return None
 
