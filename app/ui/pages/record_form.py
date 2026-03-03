@@ -211,12 +211,14 @@ class RecordForm(QWidget):
         outer.addWidget(scroll, stretch=1)
 
     def _create_section(self, title: str, fields: list) -> QGroupBox:
-        """Create a form section group box."""
+        """Create a form section group box with clean alignment."""
         group = QGroupBox(title)
         layout = QFormLayout()
-        layout.setSpacing(8)
-        layout.setContentsMargins(12, 16, 12, 12)
-        layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 20, 16, 16)
+        layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
+        layout.setRowWrapPolicy(QFormLayout.DontWrapRows)
 
         for field_def in fields:
             key = field_def[0]
@@ -226,7 +228,7 @@ class RecordForm(QWidget):
             # Create the input widget
             if field_type == "line":
                 widget = QLineEdit()
-                widget.setMaximumWidth(400)
+                widget.setFixedHeight(36)
             elif field_type == "combo":
                 options = field_def[3] if len(field_def) > 3 else []
                 widget = QComboBox()
@@ -240,13 +242,13 @@ class RecordForm(QWidget):
                 completer.setCompletionMode(QCompleter.PopupCompletion)
                 completer.setFilterMode(Qt.MatchContains)
                 completer.setCaseSensitivity(Qt.CaseInsensitive)
-                widget.setMaximumWidth(400)
+                widget.setFixedHeight(36)
             elif field_type == "text":
                 widget = QTextEdit()
-                widget.setMaximumWidth(400)
                 widget.setFixedHeight(100)
             else:
                 widget = QLineEdit()
+                widget.setFixedHeight(36)
 
             self._fields[key] = widget
 
@@ -259,11 +261,13 @@ class RecordForm(QWidget):
             # Wrap widget + error in a vertical layout
             wrapper = QVBoxLayout()
             wrapper.setSpacing(2)
+            wrapper.setContentsMargins(0, 0, 0, 0)
             wrapper.addWidget(widget)
             wrapper.addWidget(err)
 
             lbl = QLabel(label)
             lbl.setObjectName("fieldLabel")
+            lbl.setFixedWidth(260)
             layout.addRow(lbl, wrapper)
 
         group.setLayout(layout)
