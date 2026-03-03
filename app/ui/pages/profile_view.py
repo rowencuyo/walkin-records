@@ -259,18 +259,24 @@ class ProfileView(QWidget):
         else:
             for doc in documents:
                 row = QHBoxLayout()
-                row.setSpacing(8)
+                row.setSpacing(10)
+                row.setContentsMargins(12, 8, 12, 8)
 
                 # Check file integrity
                 file_exists = Path(doc.file_path).exists() if doc.file_path else False
 
                 if file_exists:
-                    icon = QLabel("[OK]")
-                    icon.setStyleSheet("color: #34C759; font-weight: 600;")
+                    icon = QLabel("OK")
+                    icon.setStyleSheet(
+                        "color: #34C759; font-weight: 700; font-size: 13px;"
+                    )
                 else:
-                    icon = QLabel("[!!]")
-                    icon.setStyleSheet("color: #FF3B30; font-weight: 600;")
-                icon.setFixedWidth(40)
+                    icon = QLabel("!!")
+                    icon.setStyleSheet(
+                        "color: #FF3B30; font-weight: 700; font-size: 13px;"
+                    )
+                icon.setFixedWidth(24)
+                icon.setAlignment(Qt.AlignCenter)
                 row.addWidget(icon)
 
                 info = QVBoxLayout()
@@ -291,12 +297,13 @@ class ProfileView(QWidget):
                 if file_exists:
                     open_btn = QPushButton("Open")
                     open_btn.setFixedHeight(34)
+                    open_btn.setMinimumWidth(70)
                     open_btn.clicked.connect(lambda checked, d=doc: self._open_document(d))
                     row.addWidget(open_btn)
                 else:
-                    # Locate button for missing files
                     locate_btn = QPushButton("Locate")
                     locate_btn.setFixedHeight(34)
+                    locate_btn.setMinimumWidth(70)
                     locate_btn.clicked.connect(lambda checked, d=doc: self._locate_document(d))
                     row.addWidget(locate_btn)
 
@@ -304,14 +311,14 @@ class ProfileView(QWidget):
                     del_btn = QPushButton("Remove")
                     del_btn.setObjectName("dangerButton")
                     del_btn.setFixedHeight(34)
-                    del_btn.setMinimumWidth(80)
+                    del_btn.setMinimumWidth(90)
                     del_btn.clicked.connect(lambda checked, d=doc: self._delete_document(d))
                     row.addWidget(del_btn)
 
                 row_widget = QWidget()
                 row_widget.setLayout(row)
                 row_widget.setStyleSheet(
-                    f"background-color: {Colors.BG_SECONDARY}; border-radius: 6px; padding: 8px 12px;"
+                    f"background-color: {Colors.BG_SECONDARY}; border-radius: 6px;"
                 )
                 layout.addWidget(row_widget)
 
