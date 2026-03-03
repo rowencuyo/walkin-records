@@ -330,18 +330,66 @@ class RecordListPage(QWidget):
 
     # -- Data Loading --
 
+    def apply_filter(self, filter_type: str):
+        """Apply a dashboard filter and reload data."""
+        # Reset search bar
+        self._search_bar.clear()
+        self._query = ""
+        self._visa_status = ""
+        self._edu_level = ""
+        self._year_level = ""
+        self._include_inactive = False
+        self._current_page = 0
+
+        if filter_type == "inactive":
+            self._include_inactive = True
+        elif filter_type in ("missing_docs", "expired_visa", "expiring_visa", "active"):
+            # These filters are handled via special query in load_data
+            pass
+
+        self._active_filter = filter_type
+        self.load_data()
+
     def load_data(self):
         """Load records from database."""
         offset = self._current_page * self._page_size
-        records, total = self._record_service.search_records(
-            query=self._query,
-            visa_status=self._visa_status,
-            educational_level=self._edu_level,
-            year_level=self._year_level,
-            include_inactive=self._include_inactive,
-            offset=offset,
-            limit=self._page_size,
-        )
+
+        # Check for special dashboard filters
+        active_filter = getattr(self, "_active_filter", "")
+
+        if active_filter in ("expired_visa", "expiring_visa", "missing_docs"):
+            from app.services.dashboard_service import DashboardService
+            ds = DashboardService()
+            if active_filter == "expired_visa":
+                ids = ds.get_expired_visa_ids()
+            elif active_filter == "expiring_visa":
+                ids = ds.get_expiring_visa_ids()
+            else:
+                ids = self._get_missing_docs_ids()
+
+            # Filter records by IDs
+            if ids:
+                records, total = self._record_service.search_records(
+                    include_inactive=self._include_inactive,
+                    offset=offset,
+                    limit=self._page_size,
+                )
+                records = [r for r in records if r.id in set(ids)]
+                total = len(ids)
+            else:
+                records, total = [], 0
+            self._active_filter = ""
+        else:
+            records, total = self._record_service.search_records(
+                query=self._query,
+                visa_status=self._visa_status,
+                educational_level=self._edu_level,
+                year_level=self._year_level,
+                include_inactive=self._include_inactive,
+                offset=offset,
+                limit=self._page_size,
+            )
+
         self._current_records = records
         self._total_count = total
 
@@ -362,6 +410,21 @@ class RecordListPage(QWidget):
 
         if self._view_stack.currentIndex() == 1:
             self._populate_cards()
+
+    def _get_missing_docs_ids(self) -> list[int]:
+        """Get IDs of active records missing required documents."""
+        from app.database import get_connection
+        from app.constants import DocumentType
+        required_count = len(DocumentType)
+        conn = get_connection()
+        rows = conn.execute(
+            f"""SELECT w.id FROM walkin_records w
+               WHERE w.is_active = 1
+               AND (SELECT COUNT(DISTINCT d.document_type)
+                    FROM documents d WHERE d.record_id = w.id) < ?""",
+            (required_count,),
+        ).fetchall()
+        return [r["id"] for r in rows]
 
     def _populate_cards(self):
         """Build card widgets from current data."""

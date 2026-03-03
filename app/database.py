@@ -114,8 +114,55 @@ CREATE INDEX IF NOT EXISTS idx_records_visa_status ON walkin_records(visa_status
 CREATE INDEX IF NOT EXISTS idx_records_is_active ON walkin_records(is_active);
 CREATE INDEX IF NOT EXISTS idx_records_active_passport
     ON walkin_records(passport_number, is_active);
+CREATE INDEX IF NOT EXISTS idx_records_visa_validity
+    ON walkin_records(visa_validity_date, is_active);
 CREATE INDEX IF NOT EXISTS idx_documents_record ON documents(record_id);
 CREATE INDEX IF NOT EXISTS idx_profile_pics_record ON profile_pictures(record_id);
+
+-- v1.2: Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    severity        TEXT NOT NULL,
+    category        TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    message         TEXT NOT NULL,
+    group_key       TEXT DEFAULT '',
+    record_id       INTEGER,
+    status          TEXT DEFAULT 'unread',
+    created_at      TEXT NOT NULL,
+    resolved_at     TEXT DEFAULT '',
+    FOREIGN KEY (record_id) REFERENCES walkin_records(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status);
+CREATE INDEX IF NOT EXISTS idx_notifications_group ON notifications(group_key);
+
+-- v1.2: Authentication (single-user, single-row enforced)
+CREATE TABLE IF NOT EXISTS auth (
+    id                  INTEGER PRIMARY KEY CHECK (id = 1),
+    username            TEXT NOT NULL DEFAULT 'admin',
+    password_hash       TEXT NOT NULL,
+    salt                TEXT NOT NULL,
+    username_changed_at TEXT DEFAULT '',
+    password_changed_at TEXT DEFAULT '',
+    failed_attempts     INTEGER DEFAULT 0,
+    last_failed_at      TEXT DEFAULT ''
+);
+
+-- v1.2: Preferences (key-value store)
+CREATE TABLE IF NOT EXISTS preferences (
+    key     TEXT PRIMARY KEY,
+    value   TEXT NOT NULL
+);
+
+-- v1.2: Recent activity tracking
+CREATE TABLE IF NOT EXISTS recent_activity (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_id   INTEGER NOT NULL,
+    action      TEXT NOT NULL,
+    timestamp   TEXT NOT NULL,
+    FOREIGN KEY (record_id) REFERENCES walkin_records(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_recent_activity_ts ON recent_activity(timestamp DESC);
 """
 
 

@@ -153,3 +153,51 @@ class ProfilePicture:
             file_path=row.get("file_path", ""),
             upload_date=row.get("upload_date", ""),
         )
+
+
+@dataclass
+class Notification:
+    """Represents a system notification."""
+    id: Optional[int] = None
+    severity: str = "info"        # 'info', 'warning', 'critical'
+    category: str = ""            # 'visa_expiry', 'missing_docs', 'backup', etc.
+    title: str = ""
+    message: str = ""
+    group_key: str = ""
+    record_id: Optional[int] = None
+    status: str = "unread"        # 'unread', 'read', 'dismissed', 'resolved'
+    created_at: str = ""
+    resolved_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: dict) -> "Notification":
+        return cls(
+            id=row.get("id"),
+            severity=row.get("severity", "info"),
+            category=row.get("category", ""),
+            title=row.get("title", ""),
+            message=row.get("message", ""),
+            group_key=row.get("group_key", ""),
+            record_id=row.get("record_id"),
+            status=row.get("status", "unread"),
+            created_at=row.get("created_at", ""),
+            resolved_at=row.get("resolved_at", ""),
+        )
+
+
+@dataclass
+class RecentActivity:
+    """Represents a recent activity entry."""
+    id: Optional[int] = None
+    record_id: int = 0
+    action: str = ""              # 'viewed', 'edited'
+    timestamp: str = ""
+
+    @classmethod
+    def from_row(cls, row: dict) -> "RecentActivity":
+        return cls(
+            id=row.get("id"),
+            record_id=row.get("record_id", 0),
+            action=row.get("action", ""),
+            timestamp=row.get("timestamp", ""),
+        )

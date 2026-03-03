@@ -98,3 +98,40 @@ COUNTRIES = [
     "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe",
     "Other",
 ]
+
+
+# ── v1.2: Notification Enums ──
+
+class NotificationSeverity(str, Enum):
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class NotificationCategory(str, Enum):
+    VISA_EXPIRY = "visa_expiry"
+    VISA_EXPIRING = "visa_expiring"
+    MISSING_DOCS = "missing_docs"
+    BACKUP_OVERDUE = "backup_overdue"
+
+
+class NotificationStatus(str, Enum):
+    UNREAD = "unread"
+    READ = "read"
+    DISMISSED = "dismissed"
+    RESOLVED = "resolved"
+
+
+# ── v1.2: Preference Defaults ──
+
+DEFAULT_PREFERENCES = {
+    "idle_lock_enabled": "false",
+    "idle_lock_timeout_min": "15",
+    "notify_visa_expiry": "true",
+    "visa_expiry_threshold_days": "30",
+    "notify_missing_docs": "true",
+    "notify_backup_reminder": "true",
+    "notification_retention_days": "90",
+}
+
+AUTO_LOCK_TIMEOUT_OPTIONS = [5, 10, 15, 30, 60]  # minutes
