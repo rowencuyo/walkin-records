@@ -309,7 +309,6 @@ class ProfileView(QWidget):
 
                 if not self._read_only:
                     del_btn = QPushButton("Remove")
-                    del_btn.setObjectName("dangerButton")
                     del_btn.setFixedHeight(38)
                     del_btn.setMinimumWidth(90)
                     del_btn.clicked.connect(lambda checked, d=doc: self._delete_document(d))
