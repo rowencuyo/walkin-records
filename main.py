@@ -1,5 +1,5 @@
 """
-Walk-In Records Management System — Entry Point
+Archivium — Offline Walk-In Records Management System
 """
 import sys
 
@@ -14,11 +14,11 @@ from app.utils.logger import setup_logging, get_logger
 def main():
     setup_logging()
     logger = get_logger("main")
-    logger.info("Starting Walk-In Records Management System")
+    logger.info("Starting Archivium")
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Walk-In Records")
-    app.setOrganizationName("WalkInRecords")
+    app.setApplicationName("Archivium")
+    app.setOrganizationName("Archivium")
     app.setStyleSheet(get_stylesheet())
 
     # Initialize database

@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Walk-In Records Management System")
+        self.setWindowTitle("Archivium 1.1")
         self.setMinimumSize(1100, 700)
         self.resize(1300, 800)
 

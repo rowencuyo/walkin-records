@@ -31,7 +31,7 @@ class Sidebar(QWidget):
         layout.setSpacing(2)
 
         # App title
-        title = QLabel("Walk-In Records")
+        title = QLabel("Archivium")
         title.setStyleSheet(
             "font-size: 18px; font-weight: 700; padding: 8px 20px 16px 20px; color: #1D1D1F;"
         )
