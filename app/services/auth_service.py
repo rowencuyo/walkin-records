@@ -9,6 +9,7 @@ from typing import Optional
 
 from app.database import get_connection
 from app.utils.logger import get_logger
+from core.audit_logger import log_action
 
 logger = get_logger(__name__)
 
@@ -80,6 +81,7 @@ class AuthService:
 
         # Success — reset failed attempts
         self._reset_failed_attempts()
+        log_action(username, "LOGIN", "auth", details="Login successful")
         return True, ""
 
     def authenticate_password_only(self, password: str) -> tuple[bool, str]:
@@ -135,6 +137,7 @@ class AuthService:
             )
             conn.commit()
             logger.info("Password changed")
+            log_action("admin", "CHANGE_PASSWORD", "auth", details="Password changed")
             return True, ""
         except Exception as e:
             conn.rollback()
@@ -156,6 +159,8 @@ class AuthService:
             )
             conn.commit()
             logger.info("Username changed to '%s'", new_username)
+            log_action(new_username, "CHANGE_USERNAME", "auth",
+                       details=f"Username changed to '{new_username}'")
             return True, ""
         except Exception as e:
             conn.rollback()

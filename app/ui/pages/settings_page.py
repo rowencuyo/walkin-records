@@ -20,6 +20,7 @@ from app.services.export_service import ExportService
 from app.constants import AUTO_LOCK_TIMEOUT_OPTIONS
 from app.ui.theme import Colors
 from app.utils.logger import get_logger
+from core.audit_logger import log_action
 
 logger = get_logger(__name__)
 
@@ -55,6 +56,7 @@ class SettingsPage(QWidget):
         content_layout.addWidget(self._create_notification_section())
         content_layout.addWidget(self._create_export_section())
         content_layout.addWidget(self._create_backup_section())
+        content_layout.addWidget(self._create_audit_section())
         content_layout.addWidget(self._create_about_section())
         content_layout.addStretch()
 
@@ -66,7 +68,7 @@ class SettingsPage(QWidget):
         label = QLabel(text, self)
         label.setObjectName("sectionTitle")
         label.setStyleSheet(
-            f"font-size: 17px; font-weight: 700; color: {Colors.TEXT_PRIMARY}; "
+            "font-size: 18px; font-weight: 700; color: #1F2933; "
             "padding: 0; margin: 0; background: transparent;"
         )
         return label
@@ -76,7 +78,7 @@ class SettingsPage(QWidget):
         line = QFrame(self)
         line.setFrameShape(QFrame.HLine)
         line.setFixedHeight(1)
-        line.setStyleSheet(f"background-color: {Colors.BORDER_LIGHT};")
+        line.setStyleSheet("background-color: #E5E7EB;")
         return line
 
     # ── Security ──
@@ -247,7 +249,7 @@ class SettingsPage(QWidget):
         self._export_start.setCalendarPopup(True)
         self._export_start.setDisplayFormat("MM/dd/yyyy")
         self._export_start.setDate(QDate.currentDate().addMonths(-1))
-        self._export_start.setMaximumWidth(160)
+        self._export_start.setFixedWidth(160)
         date_row.addWidget(self._export_start)
 
         date_row.addSpacing(12)
@@ -256,7 +258,7 @@ class SettingsPage(QWidget):
         self._export_end.setCalendarPopup(True)
         self._export_end.setDisplayFormat("MM/dd/yyyy")
         self._export_end.setDate(QDate.currentDate())
-        self._export_end.setMaximumWidth(160)
+        self._export_end.setFixedWidth(160)
         date_row.addWidget(self._export_end)
         date_row.addStretch()
         layout.addLayout(date_row)
@@ -302,6 +304,10 @@ class SettingsPage(QWidget):
 
         try:
             count = self._export.export_to_excel(records, output_path)
+            log_action(
+                "admin", "EXPORT_DATA", "export",
+                details=f"Exported {count} records ({start} to {end}) to {output_path}",
+            )
             QMessageBox.information(
                 self, "Export Complete",
                 f"Successfully exported {count} records to:\n{output_path}",
@@ -462,6 +468,43 @@ class SettingsPage(QWidget):
         except Exception:
             pass
         return "Never"
+
+    # ── Audit Log ──
+
+    def _create_audit_section(self) -> QWidget:
+        section = QWidget(self)
+        layout = QVBoxLayout(section)
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 16, 0, 16)
+
+        layout.addWidget(self._make_section_header("Audit Log"))
+        layout.addSpacing(4)
+
+        desc = QLabel(
+            "View a complete history of all system actions including record changes, "
+            "logins, and settings updates.",
+            section,
+        )
+        desc.setWordWrap(True)
+        desc.setObjectName("subtitleLabel")
+        layout.addWidget(desc)
+
+        btn_row = QHBoxLayout()
+        view_audit_btn = QPushButton("View System Audit Logs", section)
+        view_audit_btn.setObjectName("primaryButton")
+        view_audit_btn.setFixedHeight(34)
+        view_audit_btn.clicked.connect(self._on_view_audit_logs)
+        btn_row.addWidget(view_audit_btn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        layout.addWidget(self._make_divider())
+        return section
+
+    def _on_view_audit_logs(self):
+        from app.ui.components.audit_viewer_dialog import AuditViewerDialog
+        dialog = AuditViewerDialog(self)
+        dialog.exec()
 
     # ── About ──
 

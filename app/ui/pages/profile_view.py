@@ -193,6 +193,7 @@ class ProfileView(QWidget):
             ("Course / Program", self._record.course_program),
             ("Year Level", self._record.year_level),
             ("Semester", self._record.semester),
+            ("Remarks", self._record.enrollment_status),
         ]))
 
         # Visa
@@ -201,7 +202,7 @@ class ProfileView(QWidget):
             ("Visa Grant Date", self._record.visa_grant_date),
             ("Visa Validity Date", self._record.visa_validity_date),
             ("Status", self._record.visa_status),
-            ("Remarks", self._record.remarks),
+            ("Comments", self._record.remarks),
         ]))
 
         # Documents (with file integrity checks)

@@ -106,6 +106,7 @@ class Workspace(QWidget):
         # Notifications
         self._notification_page = NotificationPage(self)
         self._notification_page.record_selected.connect(self.record_open_requested)
+        self._notification_page.badge_changed.connect(self._refresh_badge)
         self._page_stack.addWidget(self._notification_page)  # 2
 
         # Settings (includes Backup)
@@ -182,10 +183,20 @@ class Workspace(QWidget):
         self.navigate_requested.emit(page_id)
 
     def _on_preview_requested(self, record_id: int):
+        from app.ui.pages.profile_view import ProfileView
+        current = self._page_stack.currentWidget()
+        if isinstance(current, ProfileView):
+            return  # Don't show preview when a profile is already open
         self._preview.show_record(record_id)
 
     def _on_preview_closed(self):
         pass  # panel closed itself; nothing else needed
+
+    def _refresh_badge(self):
+        """Refresh the notification badge immediately."""
+        from app.services.notification_service import NotificationService
+        count = NotificationService().get_unread_count()
+        self._sidebar.set_badge("notifications", count)
 
     def _apply_dashboard_filter(self, filter_type: str):
         self.navigate_to("records")

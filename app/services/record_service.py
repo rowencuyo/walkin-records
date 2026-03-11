@@ -8,6 +8,7 @@ from typing import Optional
 from app.database import get_connection
 from app.models import WalkInRecord
 from app.utils.logger import get_logger
+from core.audit_logger import log_action
 
 logger = get_logger(__name__)
 
@@ -41,6 +42,8 @@ class RecordService:
             conn.commit()
             record_id = cursor.lastrowid
             logger.info("Created record ID=%d, passport=%s", record_id, record.passport_number)
+            log_action("admin", "CREATE_RECORD", "records", record_id,
+                       f"Created record for {record.first_name} {record.last_name}")
             return record_id
         except sqlite3.Error as e:
             conn.rollback()
@@ -124,7 +127,8 @@ class RecordService:
         visa_status: str = "",
         educational_level: str = "",
         year_level: str = "",
-        include_inactive: bool = False,
+        active_status: str = "active",
+        record_ids: list[int] | None = None,
         sort_column: str = "updated_at",
         sort_order: str = "DESC",
         offset: int = 0,
@@ -137,8 +141,17 @@ class RecordService:
         conditions = []
         params = []
 
-        if not include_inactive:
+        if active_status == "active":
             conditions.append("is_active = 1")
+        elif active_status == "archived":
+            conditions.append("is_active = 0")
+
+        if record_ids is not None:
+            if not record_ids:
+                return [], 0  # Fast path: explicitly looking for specific IDs but list is empty
+            placeholders = ",".join("?" for _ in record_ids)
+            conditions.append(f"id IN ({placeholders})")
+            params.extend(record_ids)
 
         if query:
             # Multi-word AND: each word must match at least one field
@@ -222,6 +235,8 @@ class RecordService:
             conn.commit()
             if cursor.rowcount > 0:
                 logger.info("Updated record ID=%d", record_id)
+                log_action("admin", "EDIT_RECORD", "records", record_id,
+                           f"Updated record for {record.first_name} {record.last_name}")
                 return True
             return False
         except sqlite3.Error as e:
@@ -242,6 +257,8 @@ class RecordService:
             conn.commit()
             if cursor.rowcount > 0:
                 logger.info("Soft-deleted record ID=%d", record_id)
+                log_action("admin", "DELETE_RECORD", "records", record_id,
+                           "Record deactivated (soft-delete)")
                 return True
             return False
         except sqlite3.Error as e:
@@ -271,6 +288,8 @@ class RecordService:
             conn.commit()
             if cursor.rowcount > 0:
                 logger.info("Restored record ID=%d", record_id)
+                log_action("admin", "RESTORE_RECORD", "records", record_id,
+                           "Record restored from inactive")
                 return True
             return False
         except sqlite3.Error as e:

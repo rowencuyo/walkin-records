@@ -85,6 +85,11 @@ class ProfilePictureWidget(QWidget):
                 painter.end()
 
                 self._image_label.setPixmap(result)
+                self._image_label.setStyleSheet(
+                    f"border-radius: {self._size // 2}px; "
+                    f"background-color: transparent; "
+                    f"border: none;"
+                )
                 if self._editable:
                     self._remove_btn.setVisible(True)
                 return

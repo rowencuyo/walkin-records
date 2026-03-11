@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
         # Read-only indicator
         self._readonly_label = QLabel("")
         self._readonly_label.setStyleSheet(
-            "color: #FF9500; font-weight: 600; padding: 0 8px;"
+            "color: #F59E0B; font-weight: 600; padding: 0 8px;"
         )
         self._status_bar.addPermanentWidget(self._readonly_label)
 
@@ -104,7 +104,7 @@ class MainWindow(QMainWindow):
         self._undo_btn = QPushButton("Undo")
         self._undo_btn.setFixedHeight(24)
         self._undo_btn.setStyleSheet(
-            "font-size: 12px; padding: 2px 8px; color: #007AFF; font-weight: 600;"
+            "font-size: 12px; padding: 2px 8px; color: #4F8EF7; font-weight: 600;"
         )
         self._undo_btn.setVisible(False)
         self._undo_btn.clicked.connect(self._perform_undo)
@@ -163,10 +163,10 @@ class MainWindow(QMainWindow):
     def show_banner(self, message: str, style: str = "success", duration_ms: int = 3000):
         """Show a non-blocking, auto-fading inline banner in the status bar."""
         colors = {
-            "success": "#34C759",
-            "warning": "#FF9500",
-            "error": "#FF3B30",
-            "info": "#007AFF",
+            "success": "#10B981",
+            "warning": "#F59E0B",
+            "error": "#EF4444",
+            "info": "#4F8EF7",
         }
         bg = colors.get(style, colors["info"])
         self._status_bar.showMessage(f"✓ {message}", duration_ms)

@@ -78,19 +78,19 @@ class RecordCard(QFrame):
             avatar.setText("?")
             avatar.setAlignment(Qt.AlignCenter)
             avatar.setStyleSheet(
-                "background-color: #E5E5EA; border-radius: 20px; color: #8E8E93; font-size: 18px; font-weight: 600;"
+                "background-color: #E5E7EB; border-radius: 20px; color: #9CA3AF; font-size: 18px; font-weight: 600;"
             )
         top.addWidget(avatar)
 
         name_col = QVBoxLayout()
         name_col.setSpacing(2)
         name_label = QLabel(record.full_name, self)
-        name_label.setStyleSheet("font-weight: 600; font-size: 16px; color: #1D1D1F;")
+        name_label.setStyleSheet("font-weight: 600; font-size: 16px; color: #1F2933;")
         name_label.setWordWrap(True)
         name_col.addWidget(name_label)
 
         passport_label = QLabel(record.passport_number, self)
-        passport_label.setStyleSheet("font-size: 14px; color: #6E6E73;")
+        passport_label.setStyleSheet("font-size: 14px; color: #6B7280;")
         name_col.addWidget(passport_label)
         top.addLayout(name_col, stretch=1)
 
@@ -98,7 +98,7 @@ class RecordCard(QFrame):
         if completeness == "complete":
             badge = QLabel("Complete Docs", self)
             badge.setStyleSheet(
-                "background-color: #34C759; color: white; padding: 2px 8px; "
+                "background-color: #10B981; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
             )
             badge.setFixedHeight(20)
@@ -106,7 +106,7 @@ class RecordCard(QFrame):
         elif completeness == "missing_fields":
             badge = QLabel("Missing Fields", self)
             badge.setStyleSheet(
-                "background-color: #FF9500; color: white; padding: 2px 8px; "
+                "background-color: #F59E0B; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
             )
             badge.setFixedHeight(20)
@@ -114,7 +114,7 @@ class RecordCard(QFrame):
         elif completeness == "incomplete_documents":
             badge = QLabel("Incomplete Docs", self)
             badge.setStyleSheet(
-                "background-color: #FF9500; color: white; padding: 2px 8px; "
+                "background-color: #F59E0B; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
             )
             badge.setFixedHeight(20)
@@ -122,7 +122,7 @@ class RecordCard(QFrame):
         elif completeness == "no_documents":
             badge = QLabel("No Docs", self)
             badge.setStyleSheet(
-                "background-color: #FF3B30; color: white; padding: 2px 8px; "
+                "background-color: #EF4444; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
             )
             badge.setFixedHeight(20)
@@ -149,10 +149,10 @@ class RecordCard(QFrame):
                 row = QHBoxLayout()
                 row.setSpacing(6)
                 lbl = QLabel(f"{label_text}:", self)
-                lbl.setStyleSheet("font-size: 13px; color: #8E8E93; min-width: 40px;")
+                lbl.setStyleSheet("font-size: 13px; color: #9CA3AF; min-width: 40px;")
                 row.addWidget(lbl)
                 val = QLabel(value, self)
-                val.setStyleSheet("font-size: 13px; color: #1D1D1F;")
+                val.setStyleSheet("font-size: 13px; color: #1F2933;")
                 val.setWordWrap(True)
                 row.addWidget(val, stretch=1)
                 layout.addLayout(row)
@@ -188,7 +188,7 @@ class RecordListPage(QWidget):
         self._visa_status = ""
         self._edu_level = ""
         self._year_level = ""
-        self._include_inactive = False
+        self._active_status = "active"
         self._current_records: list[WalkInRecord] = []
         self._doc_counts: dict[int, int] = {}
         self._pic_path_cache: dict[int, str | None] = {}
@@ -229,12 +229,13 @@ class RecordListPage(QWidget):
         # View toggle
         self._table_btn = QPushButton("Table")
         self._table_btn.setCheckable(True)
-        self._table_btn.setChecked(True)
+        self._table_btn.setChecked(False)
         self._table_btn.setFixedHeight(36)
         self._table_btn.clicked.connect(lambda: self._switch_view(0))
 
         self._card_btn = QPushButton("Cards")
         self._card_btn.setCheckable(True)
+        self._card_btn.setChecked(True)
         self._card_btn.setFixedHeight(36)
         self._card_btn.clicked.connect(lambda: self._switch_view(1))
 
@@ -296,6 +297,41 @@ class RecordListPage(QWidget):
         self._card_scroll.setWidget(self._card_container)
         self._view_stack.addWidget(self._card_scroll)
 
+        # --- Empty State ---
+        self._empty_state = QWidget()
+        empty_layout = QVBoxLayout(self._empty_state)
+        empty_layout.setAlignment(Qt.AlignCenter)
+        empty_layout.setSpacing(12)
+
+        empty_icon = QLabel("📋", self._empty_state)
+        empty_icon.setStyleSheet("font-size: 36px; background: transparent;")
+        empty_icon.setAlignment(Qt.AlignCenter)
+        empty_layout.addWidget(empty_icon)
+
+        empty_title = QLabel("No records found", self._empty_state)
+        empty_title.setStyleSheet(
+            "font-size: 18px; font-weight: 600; color: #1F2933; background: transparent;"
+        )
+        empty_title.setAlignment(Qt.AlignCenter)
+        empty_layout.addWidget(empty_title)
+
+        empty_desc = QLabel(
+            "Try adjusting your search or filters, or add a new record.",
+            self._empty_state,
+        )
+        empty_desc.setStyleSheet("font-size: 14px; color: #6B7280; background: transparent;")
+        empty_desc.setAlignment(Qt.AlignCenter)
+        empty_layout.addWidget(empty_desc)
+
+        empty_add_btn = QPushButton("+ Add Record", self._empty_state)
+        empty_add_btn.setObjectName("primaryButton")
+        empty_add_btn.setFixedHeight(38)
+        empty_add_btn.setFixedWidth(160)
+        empty_add_btn.clicked.connect(self.add_record_requested.emit)
+        empty_layout.addWidget(empty_add_btn, alignment=Qt.AlignCenter)
+
+        self._view_stack.addWidget(self._empty_state)  # index 2
+
         layout.addWidget(self._view_stack, stretch=1)
 
         # Pagination
@@ -314,7 +350,7 @@ class RecordListPage(QWidget):
         pag.addWidget(self._prev_btn)
 
         self._page_label = QLabel("Page 1", self)
-        self._page_label.setStyleSheet("font-size: 14px; color: #6E6E73; padding: 0 8px;")
+        self._page_label.setStyleSheet("font-size: 14px; color: #6B7280; padding: 0 8px;")
         pag.addWidget(self._page_label)
 
         self._next_btn = QPushButton("Next", self)
@@ -331,6 +367,9 @@ class RecordListPage(QWidget):
         pag.addWidget(self._page_size_combo)
 
         layout.addLayout(pag)
+
+        # Default to Card view
+        self._view_stack.setCurrentIndex(1)
 
     # -- Read-Only Mode --
 
@@ -352,16 +391,16 @@ class RecordListPage(QWidget):
     def apply_filter(self, filter_type: str):
         """Apply a dashboard filter and reload data."""
         # Reset search bar
-        self._search_bar.clear()
+        self._search_bar.clear_all()
         self._query = ""
         self._visa_status = ""
         self._edu_level = ""
         self._year_level = ""
-        self._include_inactive = False
+        self._active_status = "active"
         self._current_page = 0
 
         if filter_type == "inactive":
-            self._include_inactive = True
+            self._active_status = "archived"
         elif filter_type in ("missing_docs", "expired_visa", "expiring_visa", "active"):
             # These filters are handled via special query in load_data
             pass
@@ -386,25 +425,20 @@ class RecordListPage(QWidget):
             else:
                 ids = self._get_missing_docs_ids()
 
-            # Filter records by IDs
-            if ids:
-                records, total = self._record_service.search_records(
-                    include_inactive=self._include_inactive,
-                    offset=offset,
-                    limit=self._page_size,
-                )
-                records = [r for r in records if r.id in set(ids)]
-                total = len(ids)
-            else:
-                records, total = [], 0
-            self._active_filter = ""
+            # Filter records natively by IDs
+            records, total = self._record_service.search_records(
+                active_status=self._active_status,
+                record_ids=ids,
+                offset=offset,
+                limit=self._page_size,
+            )
         else:
             records, total = self._record_service.search_records(
                 query=self._query,
                 visa_status=self._visa_status,
                 educational_level=self._edu_level,
                 year_level=self._year_level,
-                include_inactive=self._include_inactive,
+                active_status=self._active_status,
                 offset=offset,
                 limit=self._page_size,
             )
@@ -426,6 +460,12 @@ class RecordListPage(QWidget):
 
         self._table_model.set_data(records, total, self._doc_types)
         self._update_pagination()
+
+        # Show empty state or active view
+        if total == 0:
+            self._view_stack.setCurrentIndex(2)  # empty state
+        elif self._view_stack.currentIndex() == 2:
+            self._view_stack.setCurrentIndex(0)  # back to table
 
         if self._view_stack.currentIndex() == 1:
             self._populate_cards()
@@ -507,16 +547,18 @@ class RecordListPage(QWidget):
 
     # -- Search --
 
-    def _on_search_changed(self, query, visa_status, edu_level, year_level, include_inactive):
+    def _on_search_changed(self, query, visa_status, edu_level, year_level, active_status):
+        self._active_filter = ""
         self._query = query
         self._visa_status = visa_status
         self._edu_level = edu_level
         self._year_level = year_level
-        self._include_inactive = include_inactive
+        self._active_status = active_status
         self._current_page = 0
 
         # Also apply client-side instant filter on the proxy
         self._proxy_model.set_search_text(query)
+        self._proxy_model.set_active_status(active_status)
 
         self.load_data()
 

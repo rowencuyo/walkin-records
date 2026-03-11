@@ -1,11 +1,12 @@
 """
 Add / Edit record form with full validation, autosave drafts, and unsaved changes guard.
 """
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer, QDate
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit,
     QComboBox, QTextEdit, QLabel, QPushButton, QScrollArea,
-    QFrame, QGroupBox, QMessageBox, QCompleter,
+    QFrame, QGroupBox, QMessageBox, QCompleter, QDateEdit,
+    QSizePolicy,
 )
 
 from app.constants import (
@@ -176,7 +177,7 @@ class RecordForm(QWidget):
             ("first_name", "First Name *", "line"),
             ("middle_name", "Middle Name", "line"),
             ("sex", "Sex *", "combo", [s.value for s in Sex]),
-            ("date_of_birth", "Date of Birth * (YYYY-MM-DD)", "line"),
+            ("date_of_birth", "Date of Birth *", "date"),
             ("passport_number", "Passport Number *", "line"),
             ("country_of_citizenship", "Country of Citizenship *", "combo", COUNTRIES),
         ]))
@@ -191,21 +192,22 @@ class RecordForm(QWidget):
 
         # Section: Academic & Residency
         form_layout.addWidget(self._create_section("Academic & Residency Information", [
-            ("date_of_arrival", "Date of Arrival (YYYY-MM-DD)", "line"),
-            ("date_start_education", "Date of Start of Education (YYYY-MM-DD)", "line"),
+            ("date_of_arrival", "Date of Arrival", "date"),
+            ("date_start_education", "Date of Start of Education", "date"),
             ("educational_level", "Educational Level", "combo", [el.value for el in EducationalLevel]),
             ("course_program", "Course / Program", "line"),
             ("year_level", "Year Level", "combo", YEAR_LEVELS),
             ("semester", "Semester", "combo", [s.value for s in Semester]),
+            ("enrollment_status", "Remarks", "combo", ["Dropped", "Enrolled"]),
         ]))
 
         # Section: Visa Information
         form_layout.addWidget(self._create_section("Visa Information", [
             ("visa_category", "Visa Category", "combo", VISA_CATEGORIES),
-            ("visa_grant_date", "Visa Grant Date (YYYY-MM-DD)", "line"),
-            ("visa_validity_date", "Visa Validity Date (YYYY-MM-DD)", "line"),
+            ("visa_grant_date", "Visa Grant Date", "date"),
+            ("visa_validity_date", "Visa Validity Date", "date"),
             ("visa_status", "Status", "combo", [vs.value for vs in VisaStatus]),
-            ("remarks", "Remarks", "text"),
+            ("remarks", "Comments", "text"),
         ]))
 
         form_layout.addStretch()
@@ -230,7 +232,17 @@ class RecordForm(QWidget):
             # Create the input widget
             if field_type == "line":
                 widget = QLineEdit(self)
-                widget.setFixedHeight(36)
+                widget.setFixedHeight(38)
+                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            elif field_type == "date":
+                widget = QDateEdit(self)
+                widget.setCalendarPopup(True)
+                widget.setDisplayFormat("MM/dd/yyyy")
+                widget.setDate(QDate(2000, 1, 1))
+                widget.setSpecialValueText(" ")  # show blank when at minimum
+                widget.setMinimumDate(QDate(1900, 1, 1))
+                widget.setFixedHeight(38)
+                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             elif field_type == "combo":
                 options = field_def[3] if len(field_def) > 3 else []
                 widget = QComboBox(self)
@@ -244,13 +256,15 @@ class RecordForm(QWidget):
                 completer.setCompletionMode(QCompleter.PopupCompletion)
                 completer.setFilterMode(Qt.MatchContains)
                 completer.setCaseSensitivity(Qt.CaseInsensitive)
-                widget.setFixedHeight(36)
+                widget.setFixedHeight(38)
+                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             elif field_type == "text":
                 widget = QTextEdit(self)
                 widget.setFixedHeight(100)
             else:
                 widget = QLineEdit(self)
-                widget.setFixedHeight(36)
+                widget.setFixedHeight(38)
+                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
             self._fields[key] = widget
 
@@ -280,7 +294,12 @@ class RecordForm(QWidget):
     def _get_value(self, key: str) -> str:
         """Get value from a field widget."""
         widget = self._fields.get(key)
-        if isinstance(widget, QLineEdit):
+        if isinstance(widget, QDateEdit):
+            # Return empty string if date is at the special minimum value
+            if widget.date() == QDate(2000, 1, 1) or widget.date() == widget.minimumDate():
+                return ""
+            return widget.date().toString("yyyy-MM-dd")
+        elif isinstance(widget, QLineEdit):
             return widget.text().strip()
         elif isinstance(widget, QComboBox):
             # For editable combos, match typed text to an item
@@ -298,7 +317,16 @@ class RecordForm(QWidget):
     def _set_value(self, key: str, value: str):
         """Set value on a field widget."""
         widget = self._fields.get(key)
-        if isinstance(widget, QLineEdit):
+        if isinstance(widget, QDateEdit):
+            if value:
+                date = QDate.fromString(value, "yyyy-MM-dd")
+                if date.isValid():
+                    widget.setDate(date)
+                else:
+                    widget.setDate(QDate(2000, 1, 1))
+            else:
+                widget.setDate(QDate(2000, 1, 1))
+        elif isinstance(widget, QLineEdit):
             widget.setText(value)
         elif isinstance(widget, QComboBox):
             idx = widget.findData(value)
@@ -393,6 +421,7 @@ class RecordForm(QWidget):
             course_program=self._get_value("course_program"),
             year_level=self._get_value("year_level"),
             semester=self._get_value("semester"),
+            enrollment_status=self._get_value("enrollment_status"),
             visa_category=self._get_value("visa_category"),
             visa_grant_date=self._get_value("visa_grant_date"),
             visa_validity_date=self._get_value("visa_validity_date"),

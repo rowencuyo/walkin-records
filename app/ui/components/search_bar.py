@@ -14,8 +14,8 @@ from app.constants import (
 class SearchBar(QWidget):
     """Search and filter toolbar for the record list."""
 
-    search_changed = Signal(str, str, str, str, bool)
-    # Emits: (query, visa_status, educational_level, year_level, include_inactive)
+    search_changed = Signal(str, str, str, str, str)
+    # Emits: (query, visa_status, educational_level, year_level, active_status)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -64,14 +64,15 @@ class SearchBar(QWidget):
         self.year_filter.addItem("All Years", "")
         for yl in YEAR_LEVELS:
             self.year_filter.addItem(yl, yl)
-        self.year_filter.setMinimumWidth(100)
+        self.year_filter.setMinimumWidth(120)
         self.year_filter.currentIndexChanged.connect(self._on_filter_changed)
         layout.addWidget(self.year_filter)
 
         # Include inactive toggle
         self.inactive_filter = QComboBox(self)
         self.inactive_filter.addItem("Active Only", "active")
-        self.inactive_filter.addItem("Include Inactive", "all")
+        self.inactive_filter.addItem("Archived Only", "archived")
+        self.inactive_filter.addItem("All Records", "all")
         self.inactive_filter.setMinimumWidth(130)
         self.inactive_filter.currentIndexChanged.connect(self._on_filter_changed)
         layout.addWidget(self.inactive_filter)
@@ -87,8 +88,8 @@ class SearchBar(QWidget):
         visa_status = self.visa_filter.currentData() or ""
         edu_level = self.level_filter.currentData() or ""
         year_level = self.year_filter.currentData() or ""
-        include_inactive = self.inactive_filter.currentData() == "all"
-        self.search_changed.emit(query, visa_status, edu_level, year_level, include_inactive)
+        active_status = self.inactive_filter.currentData() or "active"
+        self.search_changed.emit(query, visa_status, edu_level, year_level, active_status)
 
     def clear_all(self):
         """Reset all filters."""

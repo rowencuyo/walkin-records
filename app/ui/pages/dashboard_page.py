@@ -6,7 +6,9 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QFrame, QGridLayout, QSizePolicy,
+    QGraphicsDropShadowEffect,
 )
+from PySide6.QtGui import QColor
 
 from app.services.dashboard_service import DashboardService
 from app.services.notification_service import NotificationService
@@ -104,27 +106,35 @@ class DashboardPage(QWidget):
         """Create a clickable metric card."""
         card = QPushButton(parent=self._content)
         card.setCursor(Qt.PointingHandCursor)
-        card.setFixedHeight(90)
+        card.setFixedHeight(96)
         card.setStyleSheet(
             f"""QPushButton {{
                 background-color: {Colors.BG_CARD};
                 border: 1px solid {Colors.BORDER_LIGHT};
-                border-radius: 8px;
+                border-radius: 10px;
                 text-align: left;
-                padding: 16px;
+                padding: 18px 20px;
             }}
             QPushButton:hover {{
                 border-color: {color};
-                background-color: {Colors.BG_SECONDARY};
+                background-color: #FAFBFF;
             }}"""
         )
+
+        # Subtle drop shadow
+        shadow = QGraphicsDropShadowEffect(card)
+        shadow.setBlurRadius(16)
+        shadow.setOffset(0, 2)
+        shadow.setColor(QColor(0, 0, 0, 13))  # rgba(0,0,0,0.05)
+        card.setGraphicsEffect(shadow)
+
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
-        card_layout.setSpacing(4)
+        card_layout.setContentsMargins(16, 10, 0, 0)
+        card_layout.setSpacing(6)
 
         val_label = QLabel(value, card)
         val_label.setStyleSheet(
-            f"font-size: 28px; font-weight: 700; color: {color}; background: transparent;"
+            f"font-size: 25px; font-weight: 700; color: {color}; background: transparent;"
         )
         card_layout.addWidget(val_label)
 

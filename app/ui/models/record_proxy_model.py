@@ -9,6 +9,7 @@ giving immediate feedback without re-querying the database.
 from PySide6.QtCore import Qt, QSortFilterProxyModel, QModelIndex
 
 COMPLETENESS_ROLE = Qt.UserRole + 2
+ACTIVE_STATUS_ROLE = Qt.UserRole + 3
 
 # Priority order: Ok (1) → !! (2) → Inc (3) → None (4)
 _COMPLETENESS_PRIORITY = {
@@ -27,6 +28,7 @@ class RecordProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._search_terms: list[str] = []
+        self._active_status: str = "active"
         self.setDynamicSortFilter(True)
         self.setSortCaseSensitivity(Qt.CaseInsensitive)
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
@@ -36,6 +38,12 @@ class RecordProxyModel(QSortFilterProxyModel):
         new_terms = text.lower().split() if text.strip() else []
         if new_terms != self._search_terms:
             self._search_terms = new_terms
+            self.invalidateFilter()
+
+    def set_active_status(self, status: str):
+        """Set the active status filter for client-side filtering."""
+        if self._active_status != status:
+            self._active_status = status
             self.invalidateFilter()
 
     def lessThan(self, left: QModelIndex, right: QModelIndex) -> bool:
@@ -49,15 +57,23 @@ class RecordProxyModel(QSortFilterProxyModel):
         return super().lessThan(left, right)
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
-        if not self._search_terms:
-            return True
-
         model = self.sourceModel()
         if model is None:
             return True
 
-        # Get the composite search string from the source model
+        # 1. Filter by active status
         index = model.index(source_row, 0, source_parent)
+        is_active = model.data(index, ACTIVE_STATUS_ROLE)
+        
+        if self._active_status == "active" and not is_active:
+            return False
+        if self._active_status == "archived" and is_active:
+            return False
+
+        # 2. Filter by search terms
+        if not self._search_terms:
+            return True
+
         search_text = model.data(index, self.SEARCH_ROLE)
         if not search_text:
             return False

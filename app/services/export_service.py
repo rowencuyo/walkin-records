@@ -98,7 +98,7 @@ class ExportService:
             ws.cell(row=row, column=22, value=rec.visa_grant_date)         # VISA GRANT DATE
             ws.cell(row=row, column=23, value=rec.visa_validity_date)      # VISA VALIDITY DATE
             ws.cell(row=row, column=24, value=rec.visa_status)             # STATUS
-            ws.cell(row=row, column=25, value=rec.remarks)                 # REMARKS
+            ws.cell(row=row, column=25, value=rec.enrollment_status)        # REMARKS
 
         wb.save(output_path)
         wb.close()

@@ -168,6 +168,19 @@ CREATE TABLE IF NOT EXISTS recent_activity (
     FOREIGN KEY (record_id) REFERENCES walkin_records(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_recent_activity_ts ON recent_activity(timestamp DESC);
+
+-- v1.5: Audit logging
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp   TEXT NOT NULL,
+    user        TEXT NOT NULL,
+    action      TEXT NOT NULL,
+    module      TEXT NOT NULL,
+    record_id   INTEGER,
+    details     TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_ts ON audit_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
 """
 
 

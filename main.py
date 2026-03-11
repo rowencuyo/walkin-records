@@ -6,10 +6,11 @@ import sys
 from PySide6.QtCore import qInstallMessageHandler, QtMsgType
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFont
+from pathlib import Path
 
 from app.database import initialize_database
 from app.ui.main_window import MainWindow
-from app.ui.theme import get_stylesheet, FONT_FAMILY
+from app.ui.theme import FONT_FAMILY
 from app.utils.logger import setup_logging, get_logger
 
 
@@ -40,7 +41,14 @@ def main():
     base_font.setPixelSize(13)
     app.setFont(base_font)
 
-    app.setStyleSheet(get_stylesheet())
+    # Load global stylesheet from QSS file
+    qss_path = Path(__file__).resolve().parent / "styles" / "global.qss"
+    if qss_path.exists():
+        with open(qss_path, "r", encoding="utf-8") as f:
+            app.setStyleSheet(f.read())
+    else:
+        from app.ui.theme import get_stylesheet
+        app.setStyleSheet(get_stylesheet())
 
     # Initialize database
     initialize_database()

@@ -38,7 +38,7 @@ class Sidebar(QWidget):
         # App title
         title = QLabel("Archivium", self)
         title.setStyleSheet(
-            "font-size: 18px; font-weight: 700; padding: 8px 20px 16px 20px; color: #1D1D1F;"
+            "font-size: 18px; font-weight: 700; padding: 8px 20px 16px 20px; color: #1F2933;"
         )
         layout.addWidget(title)
 
@@ -50,15 +50,15 @@ class Sidebar(QWidget):
             if section_header:
                 header = QLabel(section_header, self)
                 header.setStyleSheet(
-                    "font-size: 11px; font-weight: 700; color: #8E8E93; "
+                    "font-size: 11px; font-weight: 700; color: #9CA3AF; "
                     "padding: 12px 20px 4px 20px; letter-spacing: 1px;"
                 )
                 layout.addWidget(header)
 
             btn_widget = QWidget(self)
             btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(0, 0, 0, 0)
-            btn_layout.setSpacing(0)
+            btn_layout.setContentsMargins(10, 0, 12, 0)
+            btn_layout.setSpacing(4)
 
             btn = QPushButton(label, btn_widget)
             btn.setProperty("active", False)
@@ -67,16 +67,13 @@ class Sidebar(QWidget):
             self._buttons[page_id] = btn
             btn_layout.addWidget(btn)
 
-            # Badge (for notification count)
+            # Badge (red dot) — always occupies space; color toggled on/off
             badge = QLabel("", btn_widget)
+            badge.setFixedSize(8, 8)
             badge.setStyleSheet(
-                "background-color: #FF3B30; color: white; font-size: 11px; "
-                "font-weight: 600; border-radius: 8px; padding: 1px 6px; "
-                "min-width: 16px; max-height: 16px;"
+                "background-color: transparent; border-radius: 4px; "
+                "min-width: 8px; max-width: 8px; min-height: 8px; max-height: 8px;"
             )
-            badge.setAlignment(Qt.AlignCenter)
-            badge.setVisible(False)
-            badge.setFixedHeight(16)
             self._badges[page_id] = badge
             btn_layout.addWidget(badge)
 
@@ -103,11 +100,16 @@ class Sidebar(QWidget):
             btn.style().polish(btn)
 
     def set_badge(self, page_id: str, count: int):
-        """Set a badge count on a sidebar item."""
+        """Show or hide the red dot badge on a sidebar item."""
         badge = self._badges.get(page_id)
         if badge:
             if count > 0:
-                badge.setText(str(count) if count <= 99 else "99+")
-                badge.setVisible(True)
+                badge.setStyleSheet(
+                    "background-color: #EF4444; border-radius: 4px; "
+                    "min-width: 8px; max-width: 8px; min-height: 8px; max-height: 8px;"
+                )
             else:
-                badge.setVisible(False)
+                badge.setStyleSheet(
+                    "background-color: transparent; border-radius: 4px; "
+                    "min-width: 8px; max-width: 8px; min-height: 8px; max-height: 8px;"
+                )

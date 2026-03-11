@@ -18,6 +18,7 @@ class NotificationPage(QWidget):
     """Notification list with tabs: Active, Dismissed, History."""
 
     record_selected = Signal(int)
+    badge_changed = Signal()  # emitted when notification state changes
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -168,7 +169,9 @@ class NotificationPage(QWidget):
     def _dismiss(self, notification_id: int):
         self._service.mark_dismissed(notification_id)
         self.load_data()
+        self.badge_changed.emit()
 
     def _mark_all_read(self):
         self._service.mark_all_read()
         self.load_data()
+        self.badge_changed.emit()
