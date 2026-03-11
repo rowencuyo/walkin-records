@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS walkin_records (
     last_name               TEXT NOT NULL,
     first_name              TEXT NOT NULL,
     middle_name             TEXT DEFAULT '',
+    suffix_name             TEXT DEFAULT '',
     sex                     TEXT NOT NULL,
     date_of_birth           TEXT NOT NULL,
     passport_number         TEXT NOT NULL,
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS walkin_records (
     barangay                TEXT DEFAULT '',
     city_municipality       TEXT DEFAULT '',
     province                TEXT DEFAULT '',
+    region                  TEXT DEFAULT '',
     -- Academic & Residency
     date_of_arrival         TEXT DEFAULT '',
     date_start_education    TEXT DEFAULT '',
@@ -80,6 +82,9 @@ CREATE TABLE IF NOT EXISTS walkin_records (
     visa_validity_date      TEXT DEFAULT '',
     visa_status             TEXT DEFAULT '',
     remarks                 TEXT DEFAULT '',
+    -- Enrollment
+    location_status         TEXT DEFAULT '',
+    enrollment_status       TEXT DEFAULT '',
     -- System
     is_active               INTEGER DEFAULT 1,
     created_at              TEXT NOT NULL,
@@ -167,8 +172,23 @@ CREATE INDEX IF NOT EXISTS idx_recent_activity_ts ON recent_activity(timestamp D
 
 
 def initialize_database():
-    """Create tables and indexes if they don't exist."""
+    """Create tables and indexes if they don't exist, and migrate existing DBs."""
     conn = get_connection()
     conn.executescript(SCHEMA_SQL)
+
+    # v1.5 migration: add new columns to existing databases
+    _migrate_add_column(conn, "walkin_records", "suffix_name", "TEXT DEFAULT ''")
+    _migrate_add_column(conn, "walkin_records", "region", "TEXT DEFAULT ''")
+    _migrate_add_column(conn, "walkin_records", "location_status", "TEXT DEFAULT ''")
+    _migrate_add_column(conn, "walkin_records", "enrollment_status", "TEXT DEFAULT ''")
+
     conn.commit()
     logger.info("Database schema initialized")
+
+
+def _migrate_add_column(conn, table: str, column: str, definition: str):
+    """Safely add a column if it doesn't already exist (SQLite migration helper)."""
+    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+        logger.info("Migrated: added column '%s' to '%s'", column, table)

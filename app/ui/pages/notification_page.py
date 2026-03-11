@@ -31,12 +31,12 @@ class NotificationPage(QWidget):
 
         # Header
         header = QHBoxLayout()
-        title = QLabel("Notifications")
+        title = QLabel("Notifications", self)
         title.setObjectName("pageTitle")
         header.addWidget(title)
         header.addStretch()
 
-        mark_all_btn = QPushButton("Mark All Read")
+        mark_all_btn = QPushButton("Mark All Read", self)
         mark_all_btn.setFixedHeight(34)
         mark_all_btn.clicked.connect(self._mark_all_read)
         header.addWidget(mark_all_btn)
@@ -44,7 +44,7 @@ class NotificationPage(QWidget):
         outer.addLayout(header)
 
         # Tabs
-        self._tabs = QTabBar()
+        self._tabs = QTabBar(self)
         self._tabs.addTab("Active")
         self._tabs.addTab("Dismissed")
         self._tabs.addTab("History")
@@ -52,11 +52,11 @@ class NotificationPage(QWidget):
         outer.addWidget(self._tabs)
 
         # Scroll area
-        scroll = QScrollArea()
+        scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
 
-        self._list_widget = QWidget()
+        self._list_widget = QWidget(scroll)
         self._list_layout = QVBoxLayout(self._list_widget)
         self._list_layout.setSpacing(6)
         self._list_layout.setContentsMargins(0, 0, 12, 0)
@@ -83,7 +83,7 @@ class NotificationPage(QWidget):
             notifications = self._service.get_notifications(status_filter="resolved", limit=50)
 
         if not notifications:
-            empty = QLabel("No notifications" if index == 0 else "No items")
+            empty = QLabel("No notifications" if index == 0 else "No items", self._list_widget)
             empty.setStyleSheet(
                 f"color: {Colors.TEXT_TERTIARY}; font-size: 14px; padding: 24px 0;"
             )
@@ -99,7 +99,7 @@ class NotificationPage(QWidget):
         self._list_layout.addStretch()
 
     def _create_notification_row(self, notif, show_actions: bool = True) -> QWidget:
-        row = QWidget()
+        row = QWidget(self._list_widget)
         unread = notif.status == "unread"
         bg = Colors.BG_CARD if not unread else "#F0F5FF"
         row.setStyleSheet(
@@ -116,7 +116,7 @@ class NotificationPage(QWidget):
             "info": (Colors.ACCENT, "INFO"),
         }
         color, label_text = severity_config.get(notif.severity, (Colors.TEXT_SECONDARY, "INFO"))
-        pill = QLabel(label_text)
+        pill = QLabel(label_text, row)
         pill.setStyleSheet(
             f"background-color: {color}; color: white; padding: 2px 8px; "
             f"border-radius: 4px; font-size: 11px; font-weight: 600;"
@@ -129,18 +129,18 @@ class NotificationPage(QWidget):
         # Content
         info = QVBoxLayout()
         info.setSpacing(2)
-        title = QLabel(notif.title)
+        title = QLabel(notif.title, row)
         title.setStyleSheet(
             f"font-weight: {'600' if unread else '400'}; font-size: 14px;"
         )
         info.addWidget(title)
 
-        msg = QLabel(notif.message)
+        msg = QLabel(notif.message, row)
         msg.setObjectName("subtitleLabel")
         msg.setWordWrap(True)
         info.addWidget(msg)
 
-        ts = QLabel(notif.created_at[:16] if notif.created_at else "")
+        ts = QLabel(notif.created_at[:16] if notif.created_at else "", row)
         ts.setStyleSheet(f"color: {Colors.TEXT_TERTIARY}; font-size: 11px;")
         info.addWidget(ts)
 
@@ -149,13 +149,13 @@ class NotificationPage(QWidget):
         # Actions
         if show_actions:
             if notif.record_id:
-                open_btn = QPushButton("Open")
+                open_btn = QPushButton("Open", row)
                 open_btn.setFixedHeight(32)
                 open_btn.setMinimumWidth(55)
                 open_btn.clicked.connect(lambda: self.record_selected.emit(notif.record_id))
                 layout.addWidget(open_btn)
 
-            dismiss_btn = QPushButton("Dismiss")
+            dismiss_btn = QPushButton("Dismiss", row)
             dismiss_btn.setFixedHeight(32)
             dismiss_btn.setMinimumWidth(70)
             dismiss_btn.clicked.connect(

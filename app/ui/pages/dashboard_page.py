@@ -37,20 +37,16 @@ class DashboardPage(QWidget):
         outer.setSpacing(16)
 
         # Header
-        title = QLabel("Dashboard")
+        title = QLabel("Dashboard", self)
         title.setObjectName("pageTitle")
         outer.addWidget(title)
 
-        subtitle = QLabel("Operational overview")
-        subtitle.setObjectName("subtitleLabel")
-        outer.addWidget(subtitle)
-
         # Scroll area
-        scroll = QScrollArea()
+        scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
 
-        self._content = QWidget()
+        self._content = QWidget(scroll)
         self._content_layout = QVBoxLayout(self._content)
         self._content_layout.setSpacing(20)
         self._content_layout.setContentsMargins(0, 0, 12, 0)
@@ -73,7 +69,7 @@ class DashboardPage(QWidget):
 
     def _render_summary(self):
         """Record Summary Panel."""
-        section = QLabel("Records")
+        section = QLabel("Records", self._content)
         section.setStyleSheet(
             f"font-size: 16px; font-weight: 600; color: {Colors.TEXT_PRIMARY};"
         )
@@ -100,13 +96,13 @@ class DashboardPage(QWidget):
             card = self._create_metric_card(value, label, filter_key, color)
             grid.addWidget(card, i // 3, i % 3)
 
-        grid_widget = QWidget()
+        grid_widget = QWidget(self._content)
         grid_widget.setLayout(grid)
         self._content_layout.addWidget(grid_widget)
 
     def _create_metric_card(self, value: str, label: str, filter_key: str, color: str) -> QWidget:
         """Create a clickable metric card."""
-        card = QPushButton()
+        card = QPushButton(parent=self._content)
         card.setCursor(Qt.PointingHandCursor)
         card.setFixedHeight(90)
         card.setStyleSheet(
@@ -126,13 +122,13 @@ class DashboardPage(QWidget):
         card_layout.setContentsMargins(0, 0, 0, 0)
         card_layout.setSpacing(4)
 
-        val_label = QLabel(value)
+        val_label = QLabel(value, card)
         val_label.setStyleSheet(
             f"font-size: 28px; font-weight: 700; color: {color}; background: transparent;"
         )
         card_layout.addWidget(val_label)
 
-        desc_label = QLabel(label)
+        desc_label = QLabel(label, card)
         desc_label.setStyleSheet(
             f"font-size: 13px; color: {Colors.TEXT_SECONDARY}; background: transparent;"
         )
@@ -144,14 +140,14 @@ class DashboardPage(QWidget):
     def _render_alerts(self):
         """Alerts & Attention Panel."""
         header = QHBoxLayout()
-        section = QLabel("Alerts")
+        section = QLabel("Alerts", self._content)
         section.setStyleSheet(
             f"font-size: 16px; font-weight: 600; color: {Colors.TEXT_PRIMARY};"
         )
         header.addWidget(section)
         header.addStretch()
 
-        view_all = QPushButton("View All")
+        view_all = QPushButton("View All", self._content)
         view_all.setStyleSheet(
             f"color: {Colors.ACCENT}; font-size: 13px; border: none; font-weight: 500;"
         )
@@ -159,13 +155,13 @@ class DashboardPage(QWidget):
         view_all.clicked.connect(self.view_notifications.emit)
         header.addWidget(view_all)
 
-        header_widget = QWidget()
+        header_widget = QWidget(self._content)
         header_widget.setLayout(header)
         self._content_layout.addWidget(header_widget)
 
         alerts = self._notifications.get_active_notifications(limit=5)
         if not alerts:
-            empty = QLabel("No active alerts")
+            empty = QLabel("No active alerts", self._content)
             empty.setStyleSheet(
                 f"color: {Colors.TEXT_TERTIARY}; font-size: 14px; padding: 12px 0;"
             )
@@ -178,7 +174,7 @@ class DashboardPage(QWidget):
 
     def _create_alert_row(self, notif) -> QWidget:
         """Create a single alert row."""
-        row = QWidget()
+        row = QWidget(self._content)
         row.setStyleSheet(
             f"background-color: {Colors.BG_CARD}; border-radius: 6px;"
         )
@@ -193,7 +189,7 @@ class DashboardPage(QWidget):
             "info": Colors.ACCENT,
         }
         color = severity_colors.get(notif.severity, Colors.TEXT_SECONDARY)
-        indicator = QLabel("●")
+        indicator = QLabel("●", row)
         indicator.setStyleSheet(f"color: {color}; font-size: 14px;")
         indicator.setFixedWidth(20)
         layout.addWidget(indicator)
@@ -201,10 +197,10 @@ class DashboardPage(QWidget):
         # Content
         info = QVBoxLayout()
         info.setSpacing(2)
-        title = QLabel(notif.title)
+        title = QLabel(notif.title, row)
         title.setStyleSheet("font-weight: 500;")
         info.addWidget(title)
-        msg = QLabel(notif.message)
+        msg = QLabel(notif.message, row)
         msg.setObjectName("subtitleLabel")
         msg.setWordWrap(True)
         info.addWidget(msg)
@@ -212,7 +208,7 @@ class DashboardPage(QWidget):
 
         # Action: open record if linked
         if notif.record_id:
-            open_btn = QPushButton("Open")
+            open_btn = QPushButton("Open", row)
             open_btn.setFixedHeight(32)
             open_btn.setMinimumWidth(60)
             open_btn.clicked.connect(lambda: self.record_selected.emit(notif.record_id))
@@ -222,7 +218,7 @@ class DashboardPage(QWidget):
 
     def _render_recent(self):
         """Recent Activity panel."""
-        section = QLabel("Recent Activity")
+        section = QLabel("Recent Activity", self._content)
         section.setStyleSheet(
             f"font-size: 16px; font-weight: 600; color: {Colors.TEXT_PRIMARY};"
         )
@@ -230,7 +226,7 @@ class DashboardPage(QWidget):
 
         activities = self._dashboard.get_recent_activity(limit=10)
         if not activities:
-            empty = QLabel("No recent activity")
+            empty = QLabel("No recent activity", self._content)
             empty.setStyleSheet(
                 f"color: {Colors.TEXT_TERTIARY}; font-size: 14px; padding: 12px 0;"
             )
@@ -238,7 +234,7 @@ class DashboardPage(QWidget):
             return
 
         for act in activities:
-            row = QWidget()
+            row = QWidget(self._content)
             row.setStyleSheet(
                 f"background-color: {Colors.BG_CARD}; border-radius: 6px;"
             )
@@ -249,18 +245,18 @@ class DashboardPage(QWidget):
             action_text = "Viewed" if act.get("action") == "viewed" else "Edited"
             name = f"{act.get('first_name', '')} {act.get('last_name', '')}".strip() or "Unknown"
 
-            info = QLabel(f"{action_text}: {name}")
+            info = QLabel(f"{action_text}: {name}", row)
             info.setStyleSheet("font-size: 14px;")
             layout.addWidget(info, stretch=1)
 
             ts = act.get("timestamp", "")
-            time_label = QLabel(ts[:16] if ts else "")
+            time_label = QLabel(ts[:16] if ts else "", row)
             time_label.setStyleSheet(f"color: {Colors.TEXT_TERTIARY}; font-size: 12px;")
             layout.addWidget(time_label)
 
             record_id = act.get("record_id")
             if record_id:
-                btn = QPushButton("View")
+                btn = QPushButton("View", row)
                 btn.setFixedHeight(28)
                 btn.setMinimumWidth(50)
                 btn.clicked.connect(lambda checked, rid=record_id: self.record_selected.emit(rid))

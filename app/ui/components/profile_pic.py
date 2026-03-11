@@ -26,7 +26,7 @@ class ProfilePictureWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignCenter)
 
-        self._image_label = QLabel()
+        self._image_label = QLabel(self)
         self._image_label.setFixedSize(self._size, self._size)
         self._image_label.setAlignment(Qt.AlignCenter)
         self._image_label.setStyleSheet(
@@ -42,12 +42,12 @@ class ProfilePictureWidget(QWidget):
             btn_layout.setSpacing(8)
             btn_layout.setContentsMargins(0, 8, 0, 0)
 
-            self._upload_btn = QPushButton("Upload")
+            self._upload_btn = QPushButton("Upload", self)
             self._upload_btn.setFixedHeight(36)
             self._upload_btn.clicked.connect(self.upload_requested.emit)
             btn_layout.addWidget(self._upload_btn)
 
-            self._remove_btn = QPushButton("Remove")
+            self._remove_btn = QPushButton("Remove", self)
             self._remove_btn.setFixedHeight(36)
             self._remove_btn.setObjectName("dangerButton")
             self._remove_btn.clicked.connect(self.remove_requested.emit)

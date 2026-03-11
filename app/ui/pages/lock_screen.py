@@ -30,7 +30,7 @@ class LockScreen(QWidget):
         outer.setAlignment(Qt.AlignCenter)
 
         # Centered card
-        card = QWidget()
+        card = QWidget(self)
         card.setFixedWidth(360)
         card.setStyleSheet(
             "QWidget { background-color: #FFFFFF; border-radius: 12px; }"
@@ -40,7 +40,7 @@ class LockScreen(QWidget):
         card_layout.setSpacing(16)
 
         # Lock icon / title
-        title = QLabel("Locked")
+        title = QLabel("Locked", card)
         title.setStyleSheet(
             "font-size: 22px; font-weight: 700; color: #1D1D1F; background: transparent;"
         )
@@ -48,7 +48,7 @@ class LockScreen(QWidget):
         card_layout.addWidget(title)
 
         username = self._auth.get_username()
-        user_label = QLabel(username)
+        user_label = QLabel(username, card)
         user_label.setStyleSheet(
             "font-size: 14px; color: #6E6E73; background: transparent;"
         )
@@ -58,13 +58,13 @@ class LockScreen(QWidget):
         card_layout.addSpacerItem(QSpacerItem(0, 8, QSizePolicy.Minimum, QSizePolicy.Fixed))
 
         # Password input
-        pw_label = QLabel("Password")
+        pw_label = QLabel("Password", card)
         pw_label.setStyleSheet(
             "font-size: 13px; font-weight: 500; color: #1D1D1F; background: transparent;"
         )
         card_layout.addWidget(pw_label)
 
-        self._password_input = QLineEdit()
+        self._password_input = QLineEdit(card)
         self._password_input.setPlaceholderText("Enter password to unlock")
         self._password_input.setEchoMode(QLineEdit.Password)
         self._password_input.setFixedHeight(38)
@@ -72,7 +72,7 @@ class LockScreen(QWidget):
         card_layout.addWidget(self._password_input)
 
         # Error label
-        self._error_label = QLabel("")
+        self._error_label = QLabel("", card)
         self._error_label.setStyleSheet(
             "color: #FF3B30; font-size: 13px; background: transparent;"
         )
@@ -82,7 +82,7 @@ class LockScreen(QWidget):
         card_layout.addSpacerItem(QSpacerItem(0, 8, QSizePolicy.Minimum, QSizePolicy.Fixed))
 
         # Unlock button
-        unlock_btn = QPushButton("Unlock")
+        unlock_btn = QPushButton("Unlock", card)
         unlock_btn.setObjectName("primaryButton")
         unlock_btn.setFixedHeight(40)
         unlock_btn.clicked.connect(self._on_unlock)

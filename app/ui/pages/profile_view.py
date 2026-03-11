@@ -52,31 +52,31 @@ class ProfileView(QWidget):
         # Header
         header = QHBoxLayout()
 
-        back_btn = QPushButton("Back")
+        back_btn = QPushButton("Back", self)
         back_btn.setFixedHeight(38)
         back_btn.clicked.connect(self.back_requested.emit)
         header.addWidget(back_btn)
 
-        self._title_label = QLabel("Profile")
+        self._title_label = QLabel("Profile", self)
         self._title_label.setObjectName("pageTitle")
         header.addWidget(self._title_label)
         header.addStretch()
 
-        self._edit_btn = QPushButton("Edit")
+        self._edit_btn = QPushButton("Edit", self)
         self._edit_btn.setObjectName("primaryButton")
         self._edit_btn.setFixedHeight(38)
         self._edit_btn.clicked.connect(lambda: self.edit_requested.emit(self._record_id))
         self._edit_btn.setVisible(not self._read_only)
         header.addWidget(self._edit_btn)
 
-        self._delete_btn = QPushButton("Delete")
+        self._delete_btn = QPushButton("Delete", self)
         self._delete_btn.setObjectName("dangerButton")
         self._delete_btn.setFixedHeight(38)
         self._delete_btn.clicked.connect(self._on_delete)
         self._delete_btn.setVisible(not self._read_only)
         header.addWidget(self._delete_btn)
 
-        self._restore_btn = QPushButton("Restore")
+        self._restore_btn = QPushButton("Restore", self)
         self._restore_btn.setObjectName("primaryButton")
         self._restore_btn.setFixedHeight(38)
         self._restore_btn.clicked.connect(self._on_restore)
@@ -86,11 +86,11 @@ class ProfileView(QWidget):
         outer.addLayout(header)
 
         # Scroll area
-        scroll = QScrollArea()
+        scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
 
-        self._content = QWidget()
+        self._content = QWidget(scroll)
         self._content_layout = QVBoxLayout(self._content)
         self._content_layout.setSpacing(16)
         self._content_layout.setContentsMargins(0, 0, 12, 0)
@@ -127,7 +127,7 @@ class ProfileView(QWidget):
         doc_types = [d.document_type for d in documents]
         status, missing_items = check_completeness(self._record, len(documents), doc_types)
         if status != "complete":
-            banner = QLabel("Incomplete: " + ", ".join(missing_items))
+            banner = QLabel("Incomplete: " + ", ".join(missing_items), self)
             banner.setStyleSheet(
                 f"background-color: {Colors.WARNING}; color: white; padding: 8px 16px; "
                 f"border-radius: 6px; font-weight: 600;"
@@ -140,14 +140,14 @@ class ProfileView(QWidget):
         top = QHBoxLayout()
 
         # Profile picture
-        self._pic_widget = ProfilePictureWidget(size=140, editable=not self._read_only)
+        self._pic_widget = ProfilePictureWidget(size=140, editable=not self._read_only, parent=self)
         pic_path = self._image_service.get_profile_picture_path(self._record_id)
         self._pic_widget.set_image(pic_path)
         if not self._read_only:
             self._pic_widget.upload_requested.connect(self._on_upload_picture)
             self._pic_widget.remove_requested.connect(self._on_remove_picture)
 
-        pic_container = QWidget()
+        pic_container = QWidget(self)
         pic_layout = QVBoxLayout(pic_container)
         pic_layout.setContentsMargins(0, 0, 24, 0)
         pic_layout.addWidget(self._pic_widget, alignment=Qt.AlignTop)
@@ -163,13 +163,13 @@ class ProfileView(QWidget):
         ])
         top.addWidget(identity_group, stretch=1)
 
-        top_widget = QWidget()
+        top_widget = QWidget(self)
         top_widget.setLayout(top)
         self._content_layout.addWidget(top_widget)
 
         # Inactive banner
         if not is_active:
-            banner = QLabel("This record is inactive (soft-deleted)")
+            banner = QLabel("This record is inactive (soft-deleted)", self)
             banner.setStyleSheet(
                 f"background-color: {Colors.WARNING}; color: white; padding: 8px 16px; "
                 f"border-radius: 6px; font-weight: 600;"
@@ -221,16 +221,16 @@ class ProfileView(QWidget):
 
     def _create_info_section(self, title: str, fields: list[tuple[str, str]]) -> QGroupBox:
         """Create a read-only info section."""
-        group = QGroupBox(title)
+        group = QGroupBox(title, self)
         layout = QFormLayout()
         layout.setSpacing(6)
         layout.setContentsMargins(12, 16, 12, 12)
         layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         for label, value in fields:
-            lbl = QLabel(label)
+            lbl = QLabel(label, self)
             lbl.setObjectName("fieldLabel")
-            val = QLabel(value if value else "---")
+            val = QLabel(value if value else "---", self)
             val.setTextInteractionFlags(Qt.TextSelectableByMouse)
             val.setWordWrap(True)
             layout.addRow(lbl, val)
@@ -240,20 +240,20 @@ class ProfileView(QWidget):
 
     def _create_documents_section(self, documents: list[Document]) -> QGroupBox:
         """Create the documents section with upload, integrity checks, and file list."""
-        group = QGroupBox("Documents")
+        group = QGroupBox("Documents", self)
         layout = QVBoxLayout()
         layout.setSpacing(8)
         layout.setContentsMargins(12, 16, 12, 12)
 
         # Upload button (hidden in read-only mode)
         if not self._read_only:
-            upload_btn = QPushButton("+ Upload Document")
+            upload_btn = QPushButton("+ Upload Document", self)
             upload_btn.setFixedHeight(36)
             upload_btn.clicked.connect(self._on_upload_document)
             layout.addWidget(upload_btn, alignment=Qt.AlignLeft)
 
         if not documents:
-            no_docs = QLabel("No documents uploaded")
+            no_docs = QLabel("No documents uploaded", self)
             no_docs.setObjectName("subtitleLabel")
             layout.addWidget(no_docs)
         else:
@@ -266,12 +266,12 @@ class ProfileView(QWidget):
                 file_exists = Path(doc.file_path).exists() if doc.file_path else False
 
                 if file_exists:
-                    icon = QLabel("OK")
+                    icon = QLabel("OK", self)
                     icon.setStyleSheet(
                         "color: #34C759; font-weight: 700; font-size: 13px;"
                     )
                 else:
-                    icon = QLabel("!!")
+                    icon = QLabel("!!", self)
                     icon.setStyleSheet(
                         "color: #FF3B30; font-weight: 700; font-size: 13px;"
                     )
@@ -281,40 +281,40 @@ class ProfileView(QWidget):
 
                 info = QVBoxLayout()
                 info.setSpacing(2)
-                name_lbl = QLabel(f"{doc.document_type}")
+                name_lbl = QLabel(f"{doc.document_type}", self)
                 name_lbl.setStyleSheet("font-weight: 500;")
                 info.addWidget(name_lbl)
 
                 if file_exists:
-                    meta = QLabel(f"{doc.file_name} | {doc.file_size / 1024:.1f} KB | {doc.upload_date}")
+                    meta = QLabel(f"{doc.file_name} | {doc.file_size / 1024:.1f} KB | {doc.upload_date}", self)
                 else:
-                    meta = QLabel(f"{doc.file_name} | MISSING FILE")
+                    meta = QLabel(f"{doc.file_name} | MISSING FILE", self)
                     meta.setStyleSheet("color: #FF3B30;")
                 meta.setObjectName("subtitleLabel")
                 info.addWidget(meta)
                 row.addLayout(info, stretch=1)
 
                 if file_exists:
-                    open_btn = QPushButton("Open")
+                    open_btn = QPushButton("Open", self)
                     open_btn.setFixedHeight(41)
                     open_btn.setMinimumWidth(70)
                     open_btn.clicked.connect(lambda checked, d=doc: self._open_document(d))
                     row.addWidget(open_btn)
                 else:
-                    locate_btn = QPushButton("Locate")
+                    locate_btn = QPushButton("Locate", self)
                     locate_btn.setFixedHeight(41)
                     locate_btn.setMinimumWidth(70)
                     locate_btn.clicked.connect(lambda checked, d=doc: self._locate_document(d))
                     row.addWidget(locate_btn)
 
                 if not self._read_only:
-                    del_btn = QPushButton("Remove")
+                    del_btn = QPushButton("Remove", self)
                     del_btn.setFixedHeight(41)
                     del_btn.setMinimumWidth(90)
                     del_btn.clicked.connect(lambda checked, d=doc: self._delete_document(d))
                     row.addWidget(del_btn)
 
-                row_widget = QWidget()
+                row_widget = QWidget(self)
                 row_widget.setLayout(row)
                 row_widget.setStyleSheet(
                     f"background-color: {Colors.BG_SECONDARY}; border-radius: 6px;"

@@ -31,7 +31,7 @@ class SearchBar(QWidget):
         layout.setSpacing(8)
 
         # Search input
-        self.search_input = QLineEdit()
+        self.search_input = QLineEdit(self)
         self.search_input.setPlaceholderText("Search anything — name, passport, country, visa, course...")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.setMinimumWidth(250)
@@ -39,8 +39,8 @@ class SearchBar(QWidget):
         layout.addWidget(self.search_input, stretch=2)
 
         # Visa status filter
-        layout.addWidget(QLabel("Status:"))
-        self.visa_filter = QComboBox()
+        layout.addWidget(QLabel("Status:", self))
+        self.visa_filter = QComboBox(self)
         self.visa_filter.addItem("All Statuses", "")
         for vs in VisaStatus:
             self.visa_filter.addItem(vs.value, vs.value)
@@ -49,8 +49,8 @@ class SearchBar(QWidget):
         layout.addWidget(self.visa_filter)
 
         # Educational level filter
-        layout.addWidget(QLabel("Level:"))
-        self.level_filter = QComboBox()
+        layout.addWidget(QLabel("Level:", self))
+        self.level_filter = QComboBox(self)
         self.level_filter.addItem("All Levels", "")
         for el in EducationalLevel:
             self.level_filter.addItem(el.value, el.value)
@@ -59,8 +59,8 @@ class SearchBar(QWidget):
         layout.addWidget(self.level_filter)
 
         # Year level filter
-        layout.addWidget(QLabel("Year:"))
-        self.year_filter = QComboBox()
+        layout.addWidget(QLabel("Year:", self))
+        self.year_filter = QComboBox(self)
         self.year_filter.addItem("All Years", "")
         for yl in YEAR_LEVELS:
             self.year_filter.addItem(yl, yl)
@@ -69,7 +69,7 @@ class SearchBar(QWidget):
         layout.addWidget(self.year_filter)
 
         # Include inactive toggle
-        self.inactive_filter = QComboBox()
+        self.inactive_filter = QComboBox(self)
         self.inactive_filter.addItem("Active Only", "active")
         self.inactive_filter.addItem("Include Inactive", "all")
         self.inactive_filter.setMinimumWidth(130)

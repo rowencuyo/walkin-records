@@ -31,7 +31,7 @@ class LoginPage(QWidget):
         outer.setAlignment(Qt.AlignCenter)
 
         # Centered card
-        card = QWidget()
+        card = QWidget(self)
         card.setFixedWidth(380)
         card.setStyleSheet(
             "QWidget { background-color: #FFFFFF; border-radius: 12px; }"
@@ -41,7 +41,7 @@ class LoginPage(QWidget):
         card_layout.setSpacing(16)
 
         # Title
-        title = QLabel("Archivium")
+        title = QLabel("Archivium", card)
         title.setStyleSheet(
             "font-size: 24px; font-weight: 700; color: #1D1D1F; "
             "background: transparent;"
@@ -53,7 +53,7 @@ class LoginPage(QWidget):
             "Set up your account" if not self._is_setup
             else "Sign in to continue"
         )
-        subtitle = QLabel(subtitle_text)
+        subtitle = QLabel(subtitle_text, card)
         subtitle.setStyleSheet(
             "font-size: 14px; color: #6E6E73; background: transparent;"
         )
@@ -63,13 +63,13 @@ class LoginPage(QWidget):
         card_layout.addSpacerItem(QSpacerItem(0, 8, QSizePolicy.Minimum, QSizePolicy.Fixed))
 
         # Username
-        username_label = QLabel("Username")
+        username_label = QLabel("Username", card)
         username_label.setStyleSheet(
             "font-size: 13px; font-weight: 500; color: #1D1D1F; background: transparent;"
         )
         card_layout.addWidget(username_label)
 
-        self._username_input = QLineEdit()
+        self._username_input = QLineEdit(card)
         self._username_input.setPlaceholderText("Enter username")
         self._username_input.setFixedHeight(38)
         if self._is_setup:
@@ -77,13 +77,13 @@ class LoginPage(QWidget):
         card_layout.addWidget(self._username_input)
 
         # Password
-        pw_label = QLabel("Password")
+        pw_label = QLabel("Password", card)
         pw_label.setStyleSheet(
             "font-size: 13px; font-weight: 500; color: #1D1D1F; background: transparent;"
         )
         card_layout.addWidget(pw_label)
 
-        self._password_input = QLineEdit()
+        self._password_input = QLineEdit(card)
         self._password_input.setPlaceholderText("Enter password")
         self._password_input.setEchoMode(QLineEdit.Password)
         self._password_input.setFixedHeight(38)
@@ -92,13 +92,13 @@ class LoginPage(QWidget):
 
         # Confirm password (setup only)
         if not self._is_setup:
-            confirm_label = QLabel("Confirm Password")
+            confirm_label = QLabel("Confirm Password", card)
             confirm_label.setStyleSheet(
                 "font-size: 13px; font-weight: 500; color: #1D1D1F; background: transparent;"
             )
             card_layout.addWidget(confirm_label)
 
-            self._confirm_input = QLineEdit()
+            self._confirm_input = QLineEdit(card)
             self._confirm_input.setPlaceholderText("Confirm password")
             self._confirm_input.setEchoMode(QLineEdit.Password)
             self._confirm_input.setFixedHeight(38)
@@ -108,7 +108,7 @@ class LoginPage(QWidget):
             self._confirm_input = None
 
         # Error label
-        self._error_label = QLabel("")
+        self._error_label = QLabel("", card)
         self._error_label.setStyleSheet(
             "color: #FF3B30; font-size: 13px; background: transparent;"
         )
@@ -120,7 +120,7 @@ class LoginPage(QWidget):
 
         # Submit button
         btn_text = "Create Account" if not self._is_setup else "Sign In"
-        self._submit_btn = QPushButton(btn_text)
+        self._submit_btn = QPushButton(btn_text, card)
         self._submit_btn.setObjectName("primaryButton")
         self._submit_btn.setFixedHeight(40)
         self._submit_btn.clicked.connect(self._on_submit)

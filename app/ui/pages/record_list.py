@@ -23,6 +23,7 @@ from app.ui.theme import Colors
 class RecordCard(QFrame):
     """Individual card for the card view."""
     clicked = Signal(int)
+    double_clicked = Signal(int)
 
     def __init__(self, record: WalkInRecord, pic_path: str | None = None,
                  completeness: str = "", parent=None):
@@ -56,7 +57,7 @@ class RecordCard(QFrame):
         top.setSpacing(10)
 
         # Small avatar
-        avatar = QLabel()
+        avatar = QLabel(self)
         avatar.setFixedSize(40, 40)
         if pic_path:
             pix = QPixmap(pic_path).scaled(40, 40, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
@@ -83,19 +84,19 @@ class RecordCard(QFrame):
 
         name_col = QVBoxLayout()
         name_col.setSpacing(2)
-        name_label = QLabel(record.full_name)
+        name_label = QLabel(record.full_name, self)
         name_label.setStyleSheet("font-weight: 600; font-size: 16px; color: #1D1D1F;")
         name_label.setWordWrap(True)
         name_col.addWidget(name_label)
 
-        passport_label = QLabel(record.passport_number)
+        passport_label = QLabel(record.passport_number, self)
         passport_label.setStyleSheet("font-size: 14px; color: #6E6E73;")
         name_col.addWidget(passport_label)
         top.addLayout(name_col, stretch=1)
 
         # Completeness badge
         if completeness == "complete":
-            badge = QLabel("Complete Docs")
+            badge = QLabel("Complete Docs", self)
             badge.setStyleSheet(
                 "background-color: #34C759; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
@@ -103,7 +104,7 @@ class RecordCard(QFrame):
             badge.setFixedHeight(20)
             top.addWidget(badge, alignment=Qt.AlignTop)
         elif completeness == "missing_fields":
-            badge = QLabel("Missing Fields")
+            badge = QLabel("Missing Fields", self)
             badge.setStyleSheet(
                 "background-color: #FF9500; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
@@ -111,7 +112,7 @@ class RecordCard(QFrame):
             badge.setFixedHeight(20)
             top.addWidget(badge, alignment=Qt.AlignTop)
         elif completeness == "incomplete_documents":
-            badge = QLabel("Incomplete Docs")
+            badge = QLabel("Incomplete Docs", self)
             badge.setStyleSheet(
                 "background-color: #FF9500; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
@@ -119,7 +120,7 @@ class RecordCard(QFrame):
             badge.setFixedHeight(20)
             top.addWidget(badge, alignment=Qt.AlignTop)
         elif completeness == "no_documents":
-            badge = QLabel("No Docs")
+            badge = QLabel("No Docs", self)
             badge.setStyleSheet(
                 "background-color: #FF3B30; color: white; padding: 2px 8px; "
                 "border-radius: 4px; font-size: 11px; font-weight: 600;"
@@ -130,7 +131,7 @@ class RecordCard(QFrame):
         layout.addLayout(top)
 
         # Divider
-        div = QFrame()
+        div = QFrame(self)
         div.setFrameShape(QFrame.HLine)
         div.setFixedHeight(1)
         div.setStyleSheet(f"background-color: {Colors.BORDER_LIGHT};")
@@ -147,10 +148,10 @@ class RecordCard(QFrame):
             if value:
                 row = QHBoxLayout()
                 row.setSpacing(6)
-                lbl = QLabel(f"{label_text}:")
+                lbl = QLabel(f"{label_text}:", self)
                 lbl.setStyleSheet("font-size: 13px; color: #8E8E93; min-width: 40px;")
                 row.addWidget(lbl)
-                val = QLabel(value)
+                val = QLabel(value, self)
                 val.setStyleSheet("font-size: 13px; color: #1D1D1F;")
                 val.setWordWrap(True)
                 row.addWidget(val, stretch=1)
@@ -161,11 +162,17 @@ class RecordCard(QFrame):
             self.clicked.emit(self._record_id)
         super().mousePressEvent(event)
 
+    def mouseDoubleClickEvent(self, event):
+        if self._record_id is not None:
+            self.double_clicked.emit(self._record_id)
+        super().mouseDoubleClickEvent(event)
+
 
 class RecordListPage(QWidget):
     """Main record list with table and card views."""
 
-    record_selected = Signal(int)
+    record_preview_requested = Signal(int)
+    record_open_requested = Signal(int)
     add_record_requested = Signal()
 
     def __init__(self, parent=None):
@@ -192,6 +199,17 @@ class RecordListPage(QWidget):
         self._resize_timer.setSingleShot(True)
         self._resize_timer.setInterval(300)
         self._resize_timer.timeout.connect(self._populate_cards)
+
+        # Debounce timer to prevent preview panel flashing on double-click
+        self._click_timer = QTimer(self)
+        self._click_timer.setSingleShot(True)
+        # We will set the interval dynamically based on system double-click speed
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        dbl_click_ms = app.doubleClickInterval() if app else 500
+        self._click_timer.setInterval(dbl_click_ms)
+        self._click_timer.timeout.connect(self._emit_preview_delayed)
+        self._pending_preview_id = None
 
         self._setup_ui()
         self.load_data()
@@ -258,6 +276,7 @@ class RecordListPage(QWidget):
         self._table_view.horizontalHeader().setDefaultSectionSize(140)
         self._table_view.horizontalHeader().setMinimumSectionSize(80)
         self._table_view.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self._table_view.clicked.connect(self._on_table_clicked)
         self._table_view.doubleClicked.connect(self._on_table_double_click)
 
         # Set Document column width
@@ -270,7 +289,7 @@ class RecordListPage(QWidget):
         self._card_scroll = QScrollArea()
         self._card_scroll.setWidgetResizable(True)
         self._card_scroll.setFrameShape(QFrame.NoFrame)
-        self._card_container = QWidget()
+        self._card_container = QWidget(self._card_scroll)
         self._card_layout = QGridLayout(self._card_container)
         self._card_layout.setSpacing(12)
         self._card_layout.setContentsMargins(0, 0, 0, 0)
@@ -283,28 +302,28 @@ class RecordListPage(QWidget):
         pag = QHBoxLayout()
         pag.setSpacing(8)
 
-        self._record_count_label = QLabel("0 records")
+        self._record_count_label = QLabel("0 records", self)
         self._record_count_label.setObjectName("subtitleLabel")
         pag.addWidget(self._record_count_label)
 
         pag.addStretch()
 
-        self._prev_btn = QPushButton("Previous")
+        self._prev_btn = QPushButton("Previous", self)
         self._prev_btn.setFixedHeight(34)
         self._prev_btn.clicked.connect(self._prev_page)
         pag.addWidget(self._prev_btn)
 
-        self._page_label = QLabel("Page 1")
+        self._page_label = QLabel("Page 1", self)
         self._page_label.setStyleSheet("font-size: 14px; color: #6E6E73; padding: 0 8px;")
         pag.addWidget(self._page_label)
 
-        self._next_btn = QPushButton("Next")
+        self._next_btn = QPushButton("Next", self)
         self._next_btn.setFixedHeight(34)
         self._next_btn.clicked.connect(self._next_page)
         pag.addWidget(self._next_btn)
 
-        pag.addWidget(QLabel("Per page:"))
-        self._page_size_combo = QComboBox()
+        pag.addWidget(QLabel("Per page:", self))
+        self._page_size_combo = QComboBox(self)
         for ps in PAGE_SIZE_OPTIONS:
             self._page_size_combo.addItem(str(ps), ps)
         self._page_size_combo.setCurrentText(str(self._page_size))
@@ -445,7 +464,8 @@ class RecordListPage(QWidget):
             pic_path = self._pic_path_cache[record.id]
             completeness = self._completeness_cache.get(record.id, "")
             card = RecordCard(record, pic_path, completeness)
-            card.clicked.connect(self.record_selected.emit)
+            card.clicked.connect(self._on_card_clicked)
+            card.double_clicked.connect(self._on_card_double_clicked)
             row = i // cols
             col = i % cols
             self._card_layout.addWidget(card, row, col)
@@ -502,8 +522,29 @@ class RecordListPage(QWidget):
 
     # -- Events --
 
-    def _on_table_double_click(self, index):
+    def _emit_preview_delayed(self):
+        if self._pending_preview_id is not None:
+            self.record_preview_requested.emit(self._pending_preview_id)
+            self._pending_preview_id = None
+
+    def _on_card_clicked(self, record_id: int):
+        self._pending_preview_id = record_id
+        self._click_timer.start()
+
+    def _on_card_double_clicked(self, record_id: int):
+        self._click_timer.stop()
+        self.record_open_requested.emit(record_id)
+
+    def _on_table_clicked(self, index):
         source_index = self._proxy_model.mapToSource(index)
         record = self._table_model.get_record(source_index.row())
         if record and record.id:
-            self.record_selected.emit(record.id)
+            self._pending_preview_id = record.id
+            self._click_timer.start()
+
+    def _on_table_double_click(self, index):
+        self._click_timer.stop()
+        source_index = self._proxy_model.mapToSource(index)
+        record = self._table_model.get_record(source_index.row())
+        if record and record.id:
+            self.record_open_requested.emit(record.id)

@@ -142,17 +142,17 @@ class RecordForm(QWidget):
         # Header
         header = QHBoxLayout()
         title_text = "Edit Record" if self._record_id else "Add New Record"
-        title = QLabel(title_text)
+        title = QLabel(title_text, self)
         title.setObjectName("pageTitle")
         header.addWidget(title)
         header.addStretch()
 
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton("Cancel", self)
         cancel_btn.setFixedHeight(38)
         cancel_btn.clicked.connect(self._on_cancel)
         header.addWidget(cancel_btn)
 
-        save_btn = QPushButton("Save Record")
+        save_btn = QPushButton("Save Record", self)
         save_btn.setObjectName("primaryButton")
         save_btn.setFixedHeight(38)
         save_btn.clicked.connect(self._on_save)
@@ -161,11 +161,11 @@ class RecordForm(QWidget):
         outer.addLayout(header)
 
         # Scrollable form
-        scroll = QScrollArea()
+        scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
 
-        form_widget = QWidget()
+        form_widget = QWidget(scroll)
         form_layout = QVBoxLayout(form_widget)
         form_layout.setSpacing(16)
         form_layout.setContentsMargins(0, 0, 12, 0)
@@ -214,7 +214,7 @@ class RecordForm(QWidget):
 
     def _create_section(self, title: str, fields: list) -> QGroupBox:
         """Create a form section group box with clean alignment."""
-        group = QGroupBox(title)
+        group = QGroupBox(title, self)
         layout = QFormLayout()
         layout.setSpacing(12)
         layout.setContentsMargins(16, 20, 16, 16)
@@ -229,11 +229,11 @@ class RecordForm(QWidget):
 
             # Create the input widget
             if field_type == "line":
-                widget = QLineEdit()
+                widget = QLineEdit(self)
                 widget.setFixedHeight(36)
             elif field_type == "combo":
                 options = field_def[3] if len(field_def) > 3 else []
-                widget = QComboBox()
+                widget = QComboBox(self)
                 widget.setEditable(True)
                 widget.setInsertPolicy(QComboBox.NoInsert)
                 widget.addItem("", "")  # Empty default
@@ -246,16 +246,16 @@ class RecordForm(QWidget):
                 completer.setCaseSensitivity(Qt.CaseInsensitive)
                 widget.setFixedHeight(36)
             elif field_type == "text":
-                widget = QTextEdit()
+                widget = QTextEdit(self)
                 widget.setFixedHeight(100)
             else:
-                widget = QLineEdit()
+                widget = QLineEdit(self)
                 widget.setFixedHeight(36)
 
             self._fields[key] = widget
 
             # Error label
-            err = QLabel()
+            err = QLabel(parent=self)
             err.setObjectName("errorLabel")
             err.setVisible(False)
             self._error_labels[key] = err
@@ -267,7 +267,7 @@ class RecordForm(QWidget):
             wrapper.addWidget(widget)
             wrapper.addWidget(err)
 
-            lbl = QLabel(label)
+            lbl = QLabel(label, self)
             lbl.setObjectName("fieldLabel")
             lbl.setFixedWidth(260)
             layout.addRow(lbl, wrapper)

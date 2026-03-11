@@ -13,6 +13,7 @@ class WalkInRecord:
     last_name: str = ""
     first_name: str = ""
     middle_name: str = ""
+    suffix_name: str = ""  # Jr., Sr., II, etc.
     sex: str = ""
     date_of_birth: str = ""  # YYYY-MM-DD
     passport_number: str = ""
@@ -23,6 +24,7 @@ class WalkInRecord:
     barangay: str = ""
     city_municipality: str = ""
     province: str = ""
+    region: str = ""  # Philippine region
 
     # Academic & Residency
     date_of_arrival: str = ""  # YYYY-MM-DD
@@ -36,8 +38,11 @@ class WalkInRecord:
     visa_category: str = ""
     visa_grant_date: str = ""  # YYYY-MM-DD
     visa_validity_date: str = ""  # YYYY-MM-DD
-    visa_status: str = ""
+    visa_status: str = ""  # Within / Outside Philippines
     remarks: str = ""
+
+    # Enrollment
+    enrollment_status: str = ""  # Enrolled / Dropped / Graduated
 
     # System fields
     id: Optional[int] = None
@@ -48,7 +53,10 @@ class WalkInRecord:
     @property
     def full_name(self) -> str:
         parts = [self.first_name, self.middle_name, self.last_name]
-        return " ".join(p for p in parts if p)
+        name = " ".join(p for p in parts if p)
+        if self.suffix_name:
+            name = f"{name} {self.suffix_name}"
+        return name
 
     def to_dict(self) -> dict:
         """Convert to dictionary for database operations."""
@@ -56,6 +64,7 @@ class WalkInRecord:
             "last_name": self.last_name,
             "first_name": self.first_name,
             "middle_name": self.middle_name,
+            "suffix_name": self.suffix_name,
             "sex": self.sex,
             "date_of_birth": self.date_of_birth,
             "passport_number": self.passport_number,
@@ -64,6 +73,7 @@ class WalkInRecord:
             "barangay": self.barangay,
             "city_municipality": self.city_municipality,
             "province": self.province,
+            "region": self.region,
             "date_of_arrival": self.date_of_arrival,
             "date_start_education": self.date_start_education,
             "educational_level": self.educational_level,
@@ -75,6 +85,7 @@ class WalkInRecord:
             "visa_validity_date": self.visa_validity_date,
             "visa_status": self.visa_status,
             "remarks": self.remarks,
+            "enrollment_status": self.enrollment_status,
             "is_active": 1 if self.is_active else 0,
         }
 
@@ -86,6 +97,7 @@ class WalkInRecord:
             last_name=row.get("last_name", ""),
             first_name=row.get("first_name", ""),
             middle_name=row.get("middle_name", ""),
+            suffix_name=row.get("suffix_name", ""),
             sex=row.get("sex", ""),
             date_of_birth=row.get("date_of_birth", ""),
             passport_number=row.get("passport_number", ""),
@@ -94,6 +106,7 @@ class WalkInRecord:
             barangay=row.get("barangay", ""),
             city_municipality=row.get("city_municipality", ""),
             province=row.get("province", ""),
+            region=row.get("region", ""),
             date_of_arrival=row.get("date_of_arrival", ""),
             date_start_education=row.get("date_start_education", ""),
             educational_level=row.get("educational_level", ""),
@@ -105,6 +118,7 @@ class WalkInRecord:
             visa_validity_date=row.get("visa_validity_date", ""),
             visa_status=row.get("visa_status", ""),
             remarks=row.get("remarks", ""),
+            enrollment_status=row.get("enrollment_status", ""),
             is_active=bool(row.get("is_active", 1)),
             created_at=row.get("created_at", ""),
             updated_at=row.get("updated_at", ""),

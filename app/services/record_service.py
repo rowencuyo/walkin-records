@@ -146,7 +146,7 @@ class RecordService:
                 "first_name", "last_name", "middle_name", "passport_number",
                 "country_of_citizenship", "course_program", "visa_category",
                 "visa_status", "educational_level", "year_level",
-                "city_municipality", "province", "remarks",
+                "city_municipality", "province", "region", "remarks",
                 "(first_name || ' ' || last_name)",
                 "(first_name || ' ' || middle_name || ' ' || last_name)",
                 "(last_name || ' ' || first_name)",

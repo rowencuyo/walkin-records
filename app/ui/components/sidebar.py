@@ -1,7 +1,7 @@
 """
-Sidebar navigation component.
+Sidebar navigation component — macOS Source List style.
 """
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel,
     QSpacerItem, QSizePolicy,
@@ -9,16 +9,16 @@ from PySide6.QtWidgets import (
 
 
 class Sidebar(QWidget):
-    """Source-list style sidebar navigation."""
+    """Source-list style sidebar navigation with section groupings."""
 
     page_changed = Signal(str)
 
+    # (section_header | None, page_id, label)
     PAGES = [
-        ("dashboard", "Dashboard"),
-        ("records", "Records"),
-        ("notifications", "Notifications"),
-        ("backup", "Backup"),
-        ("settings", "Settings"),
+        ("VIEWS", "dashboard", "Dashboard"),
+        (None, "records", "Records"),
+        (None, "notifications", "Notifications"),
+        ("SYSTEM", "settings", "Settings"),
     ]
 
     def __init__(self, parent=None):
@@ -36,20 +36,31 @@ class Sidebar(QWidget):
         layout.setSpacing(2)
 
         # App title
-        title = QLabel("Archivium")
+        title = QLabel("Archivium", self)
         title.setStyleSheet(
             "font-size: 18px; font-weight: 700; padding: 8px 20px 16px 20px; color: #1D1D1F;"
         )
         layout.addWidget(title)
 
-        # Navigation buttons
-        for page_id, label in self.PAGES:
-            btn_widget = QWidget()
+        # Navigation buttons with section headers
+        for entry in self.PAGES:
+            section_header, page_id, label = entry
+
+            # Insert section header if present
+            if section_header:
+                header = QLabel(section_header, self)
+                header.setStyleSheet(
+                    "font-size: 11px; font-weight: 700; color: #8E8E93; "
+                    "padding: 12px 20px 4px 20px; letter-spacing: 1px;"
+                )
+                layout.addWidget(header)
+
+            btn_widget = QWidget(self)
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(0, 0, 0, 0)
             btn_layout.setSpacing(0)
 
-            btn = QPushButton(label)
+            btn = QPushButton(label, btn_widget)
             btn.setProperty("active", False)
             btn.setCursor(btn.cursor())
             btn.clicked.connect(lambda checked, pid=page_id: self._on_click(pid))
@@ -57,7 +68,7 @@ class Sidebar(QWidget):
             btn_layout.addWidget(btn)
 
             # Badge (for notification count)
-            badge = QLabel("")
+            badge = QLabel("", btn_widget)
             badge.setStyleSheet(
                 "background-color: #FF3B30; color: white; font-size: 11px; "
                 "font-weight: 600; border-radius: 8px; padding: 1px 6px; "
@@ -100,7 +111,3 @@ class Sidebar(QWidget):
                 badge.setVisible(True)
             else:
                 badge.setVisible(False)
-
-
-# Need Qt import for alignment
-from PySide6.QtCore import Qt

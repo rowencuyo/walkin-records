@@ -11,28 +11,25 @@ from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QStackedWidget,
     QSplitter, QStatusBar, QPushButton, QLabel, QMessageBox,
+    QToolBar, QSizePolicy,
 )
 
 from app.database import DATA_DIR
-from app.ui.components.sidebar import Sidebar
-from app.ui.pages.record_list import RecordListPage
+from app.ui.workspace import Workspace
 from app.ui.pages.record_form import RecordForm
 from app.ui.pages.profile_view import ProfileView
-from app.ui.pages.backup_page import BackupPage
 from app.ui.pages.login_page import LoginPage
 from app.ui.pages.lock_screen import LockScreen
-from app.ui.pages.dashboard_page import DashboardPage
-from app.ui.pages.notification_page import NotificationPage
-from app.ui.pages.settings_page import SettingsPage
-from app.services.dashboard_service import DashboardService
-from app.services.notification_service import NotificationService
-from app.services.preferences_service import PreferencesService
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 BACKUP_META_FILE = DATA_DIR / "backup_meta.json"
 NOTIFICATION_SCAN_INTERVAL_MS = 5 * 60 * 1000  # 5 minutes
+
+from app.services.dashboard_service import DashboardService
+from app.services.notification_service import NotificationService
+from app.services.preferences_service import PreferencesService
 
 
 class MainWindow(QMainWindow):
@@ -75,6 +72,7 @@ class MainWindow(QMainWindow):
         self._root_stack.addWidget(self._main_widget)  # index 2
 
         self._setup_main_ui()
+        self._setup_toolbar()
 
         # Status bar
         self._status_bar = QStatusBar()
@@ -134,54 +132,75 @@ class MainWindow(QMainWindow):
         # Install event filter for idle tracking
         self.installEventFilter(self)
 
+    def _setup_toolbar(self):
+        """Build a unified toolbar at the top of the window."""
+        self._toolbar = QToolBar("Main Toolbar")
+        self._toolbar.setObjectName("mainToolbar")
+        self._toolbar.setMovable(False)
+        self._toolbar.setFloatable(False)
+        self._toolbar.setFixedHeight(36)
+        self.addToolBar(Qt.TopToolBarArea, self._toolbar)
+
+        # Page title in toolbar
+        self._toolbar_title = QLabel("Dashboard")
+        self._toolbar_title.setObjectName("toolbarTitle")
+        self._toolbar.addWidget(self._toolbar_title)
+
+        # Flexible spacer
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        spacer.setStyleSheet("background: transparent;")
+        self._toolbar.addWidget(spacer)
+
+        # Add Record button (contextual — only visible on Records page)
+        self._toolbar_add_btn = QPushButton("+ Add Record")
+        self._toolbar_add_btn.setObjectName("primaryButton")
+        self._toolbar_add_btn.setFixedHeight(26)
+        self._toolbar_add_btn.clicked.connect(self._show_add_form)
+        self._toolbar_add_btn.setVisible(False)
+        self._toolbar.addWidget(self._toolbar_add_btn)
+
+    def show_banner(self, message: str, style: str = "success", duration_ms: int = 3000):
+        """Show a non-blocking, auto-fading inline banner in the status bar."""
+        colors = {
+            "success": "#34C759",
+            "warning": "#FF9500",
+            "error": "#FF3B30",
+            "info": "#007AFF",
+        }
+        bg = colors.get(style, colors["info"])
+        self._status_bar.showMessage(f"✓ {message}", duration_ms)
+        self._status_bar.setStyleSheet(
+            f"QStatusBar {{ color: {bg}; font-weight: 600; }}"
+        )
+        # Reset style after duration
+        reset_timer = QTimer(self)
+        reset_timer.setSingleShot(True)
+        reset_timer.timeout.connect(
+            lambda: self._status_bar.setStyleSheet("")
+        )
+        reset_timer.start(duration_ms)
+
     def _setup_main_ui(self):
-        """Build the main app layout (sidebar + content)."""
+        """Build the main app layout using the Workspace widget."""
         layout = QHBoxLayout(self._main_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(1)
+        # Use the Workspace which contains sidebar, pages, and PreviewPanel
+        self._workspace = Workspace()
+        self._workspace.navigate_requested.connect(self._on_workspace_navigate)
+        self._workspace.record_open_requested.connect(self._show_profile)
+        self._workspace.add_record_requested.connect(self._show_add_form)
+        layout.addWidget(self._workspace)
 
-        # Sidebar
-        self._sidebar = Sidebar()
-        self._sidebar.page_changed.connect(self._navigate_to)
-        splitter.addWidget(self._sidebar)
-
-        # Content area
-        self._content = QStackedWidget()
-        splitter.addWidget(self._content)
-
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([200, 1100])
-
-        layout.addWidget(splitter)
-
-        # Create pages
-        self._dashboard_page = DashboardPage()
-        self._dashboard_page.filter_requested.connect(self._on_dashboard_filter)
-        self._dashboard_page.record_selected.connect(self._show_profile)
-        self._dashboard_page.view_notifications.connect(
-            lambda: self._navigate_to("notifications")
-        )
-
-        self._record_list = RecordListPage()
-        self._record_list.record_selected.connect(self._show_profile)
-        self._record_list.add_record_requested.connect(self._show_add_form)
-
-        self._notification_page = NotificationPage()
-        self._notification_page.record_selected.connect(self._show_profile)
-
-        self._backup_page = BackupPage()
-        self._settings_page = SettingsPage()
-
-        # Add pages
-        self._content.addWidget(self._dashboard_page)    # index 0
-        self._content.addWidget(self._record_list)       # index 1
-        self._content.addWidget(self._notification_page) # index 2
-        self._content.addWidget(self._backup_page)       # index 3
-        self._content.addWidget(self._settings_page)     # index 4
+        # Provide shortcut references used by other methods
+        self._sidebar = self._workspace._sidebar
+        self._content = self._workspace._page_stack
+        self._record_list = self._workspace._record_list
+        self._dashboard_page = self._workspace._dashboard_page
+        self._notification_page = self._workspace._notification_page
+        self._settings_page = self._workspace._settings_page
 
     # ── Login / Lock ──
 
@@ -313,53 +332,52 @@ class MainWindow(QMainWindow):
         try:
             self._notification_service.scan_and_generate()
             count = self._notification_service.get_unread_count()
-            self._sidebar.set_badge("notifications", count)
+            self._workspace.set_sidebar_badge("notifications", count)
         except Exception as e:
             logger.warning("Notification scan failed: %s", e)
 
-    # ── Navigation ──
-
-    def _navigate_to(self, page_id: str):
+    def _on_workspace_navigate(self, page_id: str):
+        """Called when Workspace sidebar changes pages."""
         if not self._check_unsaved():
             return
 
-        self._sidebar.set_active(page_id)
+        page_titles = {
+            "dashboard": "Dashboard",
+            "records": "Records",
+            "notifications": "Notifications",
+            "settings": "Settings",
+        }
+        title = page_titles.get(page_id, page_id.title())
+        self._toolbar_title.setText(title)
+        self._status_bar.showMessage(title)
+        self._toolbar_add_btn.setVisible(page_id == "records")
 
-        if page_id == "dashboard":
-            self._content.setCurrentWidget(self._dashboard_page)
-            self._dashboard_page.load_data()
-            self._status_bar.showMessage("Dashboard")
-        elif page_id == "records":
-            self._content.setCurrentWidget(self._record_list)
-            self._record_list.load_data()
-            self._status_bar.showMessage("Records")
-        elif page_id == "notifications":
-            self._content.setCurrentWidget(self._notification_page)
-            self._notification_page.load_data()
-            self._scan_notifications()  # refresh badge
-            self._status_bar.showMessage("Notifications")
-        elif page_id == "backup":
-            self._content.setCurrentWidget(self._backup_page)
-            self._status_bar.showMessage("Backup & Restore")
-        elif page_id == "settings":
-            self._content.setCurrentWidget(self._settings_page)
-            self._status_bar.showMessage("Settings")
+        if page_id == "notifications":
+            self._scan_notifications()
+
+    def _navigate_to(self, page_id: str):
+        """Programmatic navigation (e.g., from toolbar or dashboard links)."""
+        if not self._check_unsaved():
+            return
+        self._workspace.navigate_to(page_id)
+        self._on_workspace_navigate(page_id)
 
     def _on_dashboard_filter(self, filter_type: str):
         """Navigate to records with a pre-applied filter."""
-        self._sidebar.set_active("records")
-        self._content.setCurrentWidget(self._record_list)
-        self._record_list.apply_filter(filter_type)
-        self._status_bar.showMessage(f"Records — {filter_type}")
+        self._workspace.apply_filter(filter_type)
+        self._on_workspace_navigate("records")
 
     def _show_profile(self, record_id: int):
         if not self._check_unsaved():
             return
 
+        self._workspace.hide_preview()
+
         # Track activity
         self._dashboard_service.record_activity(record_id, "viewed")
 
         profile = ProfileView(record_id, read_only=self._read_only)
+        
         profile.back_requested.connect(lambda: self._return_to_list(profile))
         profile.edit_requested.connect(lambda rid: self._show_edit_form(rid, profile))
         profile.record_deleted.connect(lambda: self._return_to_list(profile))
@@ -369,6 +387,7 @@ class MainWindow(QMainWindow):
 
         self._content.addWidget(profile)
         self._content.setCurrentWidget(profile)
+        
         self._status_bar.showMessage(f"Viewing record #{record_id}")
 
     def _show_add_form(self):
@@ -376,12 +395,16 @@ class MainWindow(QMainWindow):
             self._status_bar.showMessage("Cannot add records in read-only mode", 3000)
             return
 
+        self._workspace.hide_preview()
+
         form = RecordForm()
+        
         form.saved.connect(lambda rid: self._on_form_saved(rid, form))
         form.cancelled.connect(lambda: self._return_to_list(form))
 
         self._content.addWidget(form)
         self._content.setCurrentWidget(form)
+        
         self._status_bar.showMessage("Adding new record")
 
     def _show_edit_form(self, record_id: int, previous_widget: QWidget = None):
@@ -389,12 +412,16 @@ class MainWindow(QMainWindow):
             self._status_bar.showMessage("Cannot edit records in read-only mode", 3000)
             return
 
+        self._workspace.hide_preview()
+
         form = RecordForm(record_id=record_id)
+        
         form.saved.connect(lambda rid: self._on_form_saved(rid, form))
         form.cancelled.connect(lambda: self._on_edit_cancel(form, record_id, previous_widget))
 
         self._content.addWidget(form)
         self._content.setCurrentWidget(form)
+        
         self._status_bar.showMessage(f"Editing record #{record_id}")
 
     def _on_form_saved(self, record_id: int, form: QWidget):

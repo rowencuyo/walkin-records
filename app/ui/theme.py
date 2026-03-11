@@ -83,6 +83,26 @@ def get_stylesheet() -> str:
         font-size: 16px;
     }}
 
+    QLabel, QCheckBox, QRadioButton {{
+        background: transparent;
+    }}
+
+    /* ── Toolbar ── */
+    #mainToolbar {{
+        background-color: {Colors.BG_HEADER};
+        border-bottom: 1px solid {Colors.BORDER_LIGHT};
+        padding: 0 16px;
+        spacing: 8px;
+    }}
+
+    #toolbarTitle {{
+        font-size: 18px;
+        font-weight: 700;
+        color: {Colors.TEXT_PRIMARY};
+        padding: 0 4px;
+        background: transparent;
+    }}
+
     /* ── Sidebar ── */
     #sidebar {{
         background-color: {Colors.BG_SIDEBAR};
@@ -146,7 +166,8 @@ def get_stylesheet() -> str:
     }}
 
     QPushButton#primaryButton {{
-        background-color: {Colors.ACCENT};
+        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+            stop:0 #2E8BFF, stop:1 {Colors.ACCENT});
         border: none;
         color: {Colors.TEXT_ON_ACCENT};
         font-weight: 600;
@@ -161,7 +182,8 @@ def get_stylesheet() -> str:
     }}
 
     QPushButton#dangerButton {{
-        background-color: {Colors.DANGER};
+        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+            stop:0 #FF5A52, stop:1 {Colors.DANGER});
         border: none;
         color: {Colors.TEXT_ON_ACCENT};
         font-weight: 600;
@@ -205,6 +227,46 @@ def get_stylesheet() -> str:
         background-color: {Colors.BG_CARD};
         border: 1px solid {Colors.BORDER};
         selection-background-color: {Colors.SELECTION};
+    }}
+
+    /* ── Calendar Widget ── */
+    QCalendarWidget QWidget#qt_calendar_navigationbar {{
+        background-color: {Colors.BG_SECONDARY};
+        border-bottom: 1px solid {Colors.BORDER_LIGHT};
+    }}
+    QCalendarWidget QToolButton {{
+        color: {Colors.TEXT_PRIMARY};
+        background-color: transparent;
+        border: none;
+        padding: 4px;
+        font-weight: 600;
+    }}
+    QCalendarWidget QToolButton:hover {{
+        background-color: {Colors.BORDER_LIGHT};
+        border-radius: 4px;
+    }}
+    QCalendarWidget QMenu {{
+        background-color: {Colors.BG_CARD};
+        color: {Colors.TEXT_PRIMARY};
+        border: 1px solid {Colors.BORDER_LIGHT};
+    }}
+    QCalendarWidget QSpinBox {{
+        background-color: {Colors.BG_CARD};
+        color: {Colors.TEXT_PRIMARY};
+        border: 1px solid {Colors.BORDER_LIGHT};
+    }}
+    QCalendarWidget QAbstractItemView:enabled {{
+        color: {Colors.TEXT_PRIMARY};
+        background-color: {Colors.BG_CARD};
+        selection-background-color: {Colors.SELECTION_ACTIVE};
+        selection-color: {Colors.TEXT_PRIMARY};
+    }}
+    QCalendarWidget QAbstractItemView:disabled {{
+        color: {Colors.TEXT_TERTIARY};
+    }}
+    QCalendarWidget QAbstractItemView::item {{
+        padding: 2px;
+        border: none;
     }}
 
     /* ── Table View ── */
@@ -354,20 +416,5 @@ def get_stylesheet() -> str:
         font-size: 14px;
     }}
 
-    /* ── Group Box ── */
-    QGroupBox {{
-        border: 1px solid {Colors.BORDER_LIGHT};
-        border-radius: 8px;
-        margin-top: 16px;
-        padding: 16px 12px 12px 12px;
-        font-weight: 600;
-        color: {Colors.TEXT_PRIMARY};
-    }}
-
-    QGroupBox::title {{
-        subcontrol-origin: margin;
-        subcontrol-position: top left;
-        padding: 0 8px;
-        color: {Colors.TEXT_PRIMARY};
-    }}
     """
+

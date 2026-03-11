@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QRunnable, QThreadPool, Signal, QObject
+from PySide6.QtCore import QRunnable, QThreadPool, Signal, QObject, Qt
 from PySide6.QtGui import QImage
 
 from app.database import get_connection, PROFILE_PICS_DIR
@@ -18,63 +18,6 @@ from app.utils.validators import validate_file_type
 logger = get_logger(__name__)
 
 
-class _CompressSignals(QObject):
-    finished = Signal(str)  # final path
-    error = Signal(str)     # error message
-
-
-class _CompressTask(QRunnable):
-    """Background task to compress an image if it exceeds size limit."""
-
-    def __init__(self, source_path: str, dest_path: str, max_bytes: int):
-        super().__init__()
-        self.source = source_path
-        self.dest = dest_path
-        self.max_bytes = max_bytes
-        self.signals = _CompressSignals()
-
-    def run(self):
-        try:
-            src = Path(self.source)
-            size = src.stat().st_size
-
-            if size <= self.max_bytes:
-                # No compression needed, just copy
-                shutil.copy2(self.source, self.dest)
-                self.signals.finished.emit(self.dest)
-                return
-
-            # Load and compress
-            img = QImage(self.source)
-            if img.isNull():
-                self.signals.error.emit("Failed to load image file")
-                return
-
-            # Try progressively lower quality
-            quality = 85
-            while quality >= 10:
-                img.save(self.dest, quality=quality)
-                if Path(self.dest).stat().st_size <= self.max_bytes:
-                    self.signals.finished.emit(self.dest)
-                    return
-                quality -= 10
-
-            # Try scaling down
-            for scale in [0.75, 0.5, 0.25]:
-                scaled = img.scaled(
-                    int(img.width() * scale),
-                    int(img.height() * scale),
-                )
-                scaled.save(self.dest, quality=60)
-                if Path(self.dest).stat().st_size <= self.max_bytes:
-                    self.signals.finished.emit(self.dest)
-                    return
-
-            self.signals.error.emit(
-                "Cannot compress image below 5 MB limit. Please use a smaller image."
-            )
-        except Exception as e:
-            self.signals.error.emit(str(e))
 
 
 class ImageService:
@@ -89,43 +32,16 @@ class ImageService:
     ):
         """
         Save a profile picture, compressing if needed.
-        Runs compression in a background thread.
-        on_success(path: str), on_error(msg: str) are optional callbacks.
+        Executes synchronously to avoid SQLite threading issues.
         """
-        err = validate_file_type(source_path, ALLOWED_IMAGE_EXTENSIONS)
-        if err:
-            if on_error:
-                on_error(err)
-            return
-
-        # Prepare destination
-        rec_dir = PROFILE_PICS_DIR / str(record_id)
-        rec_dir.mkdir(parents=True, exist_ok=True)
-
-        ext = Path(source_path).suffix.lower()
-        if ext == ".webp":
-            ext = ".png"  # Convert WebP to PNG for broader compatibility
-        dest_path = str(rec_dir / f"profile{ext}")
-
-        # Remove old picture first
-        self._remove_old_files(record_id)
-
-        task = _CompressTask(source_path, dest_path, MAX_PROFILE_PIC_SIZE_BYTES)
-
-        def _on_finished(final_path):
-            self._register_in_db(record_id, final_path)
+        try:
+            final_path = self.save_profile_picture_sync(record_id, source_path)
             if on_success:
                 on_success(final_path)
-
-        def _on_error(msg):
-            logger.error("Profile picture compression failed: %s", msg)
+        except Exception as e:
+            logger.error("Profile picture compression failed: %s", e)
             if on_error:
-                on_error(msg)
-
-        task.signals.finished.connect(_on_finished)
-        task.signals.error.connect(_on_error)
-
-        QThreadPool.globalInstance().start(task)
+                on_error(str(e))
 
     def save_profile_picture_sync(self, record_id: int, source_path: str) -> str:
         """
