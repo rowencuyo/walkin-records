@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from app.database import DRAFTS_DIR
 from app.utils.logger import get_logger
+from core.audit_logger import log_action
 
 logger = get_logger(__name__)
 
@@ -21,6 +22,8 @@ class DraftService:
             path = DRAFTS_DIR / f"{draft_key}.json"
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(form_data, f, ensure_ascii=False, indent=2)
+            log_action("admin", "SAVE_DRAFT", "drafts", None,
+                       f"Saved draft: {draft_key}")
             return True
         except Exception as e:
             logger.error("Failed to save draft '%s': %s", draft_key, e)
@@ -44,6 +47,8 @@ class DraftService:
         try:
             if path.exists():
                 path.unlink()
+                log_action("admin", "DELETE_DRAFT", "drafts", None,
+                           f"Deleted draft: {draft_key}")
                 return True
         except Exception as e:
             logger.error("Failed to delete draft '%s': %s", draft_key, e)

@@ -7,18 +7,17 @@ import os
 from datetime import datetime
 from typing import Optional
 
+from app.constants import PASSWORD_HASH_ITERATIONS
 from app.database import get_connection
 from app.utils.logger import get_logger
 from core.audit_logger import log_action
 
 logger = get_logger(__name__)
 
-_HASH_ITERATIONS = 260_000
-
 
 def _hash_password(password: str, salt: bytes) -> str:
     """Hash a password with PBKDF2-HMAC-SHA256."""
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, _HASH_ITERATIONS)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PASSWORD_HASH_ITERATIONS)
     return dk.hex()
 
 

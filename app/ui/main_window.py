@@ -14,18 +14,19 @@ from PySide6.QtWidgets import (
     QToolBar, QSizePolicy,
 )
 
+from app.constants import NOTIFICATION_SCAN_INTERVAL_MS
 from app.database import DATA_DIR
 from app.ui.workspace import Workspace
 from app.ui.pages.record_form import RecordForm
 from app.ui.pages.profile_view import ProfileView
 from app.ui.pages.login_page import LoginPage
 from app.ui.pages.lock_screen import LockScreen
+from app.ui.shortcuts import ShortcutsManager
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 BACKUP_META_FILE = DATA_DIR / "backup_meta.json"
-NOTIFICATION_SCAN_INTERVAL_MS = 5 * 60 * 1000  # 5 minutes
 
 from app.services.dashboard_service import DashboardService
 from app.services.notification_service import NotificationService
@@ -114,6 +115,14 @@ class MainWindow(QMainWindow):
         self._undo_timer = QTimer()
         self._undo_timer.setSingleShot(True)
         self._undo_timer.timeout.connect(self._clear_undo)
+
+        # Initialize global keyboard shortcuts
+        self._shortcuts = ShortcutsManager(self)
+        self._shortcuts.new_record.connect(self._show_add_form)
+        self._shortcuts.search_focused.connect(self._focus_search)
+        self._shortcuts.export_records.connect(self._export_visible_records)
+        self._shortcuts.close_dialog.connect(self._on_escape_pressed)
+        self._shortcuts.open_settings.connect(self._show_settings)
 
         # Keyboard shortcut: Ctrl+L to lock
         self._lock_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
@@ -447,3 +456,34 @@ class MainWindow(QMainWindow):
         self._record_list.load_data()
         self._sidebar.set_active("records")
         self._status_bar.showMessage("Records")
+    # ── Keyboard Shortcut Handlers ──
+
+    def _focus_search(self):
+        """Focus the search bar (Cmd+F / Ctrl+F)."""
+        if self._locked or self._root_stack.currentIndex() != 2:
+            return
+        # Navigate to records page if not already there
+        if self._sidebar._current_page != "records":
+            self._workspace.navigate_to("records")
+        # Focus search bar after navigation
+        QTimer.singleShot(100, lambda: self._record_list._search_bar.setFocus())
+
+    def _export_visible_records(self):
+        """Export visible/filtered records (Cmd+Shift+E / Ctrl+Shift+E)."""
+        if self._locked or self._root_stack.currentIndex() != 2:
+            return
+        # This would trigger export of currently visible records
+        self._status_bar.showMessage("Export feature coming soon", 3000)
+
+    def _on_escape_pressed(self):
+        """Handle Escape key press."""
+        if self._locked:
+            return
+        # Close preview panel if open
+        self._workspace.hide_preview()
+
+    def _show_settings(self):
+        """Navigate to Settings page (Cmd+, / Ctrl+,)."""
+        if self._locked or self._root_stack.currentIndex() != 2:
+            return
+        self._workspace.navigate_to("settings")

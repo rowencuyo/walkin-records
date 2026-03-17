@@ -11,9 +11,13 @@ from PySide6.QtGui import QImage
 
 from app.database import get_connection, PROFILE_PICS_DIR
 from app.models import ProfilePicture
-from app.constants import ALLOWED_IMAGE_EXTENSIONS, MAX_PROFILE_PIC_SIZE_BYTES
+from app.constants import (
+    ALLOWED_IMAGE_EXTENSIONS, MAX_PROFILE_PIC_SIZE_BYTES,
+    IMAGE_COMPRESSION_START_QUALITY, IMAGE_COMPRESSION_STEP, IMAGE_COMPRESSION_MIN_QUALITY,
+)
 from app.utils.logger import get_logger
 from app.utils.validators import validate_file_type
+from core.audit_logger import log_action
 
 logger = get_logger(__name__)
 
@@ -29,7 +33,7 @@ class ImageService:
         source_path: str,
         on_success=None,
         on_error=None,
-    ):
+    ) -> None:
         """
         Save a profile picture, compressing if needed.
         Executes synchronously to avoid SQLite threading issues.
@@ -67,18 +71,20 @@ class ImageService:
             img = QImage(source_path)
             if img.isNull():
                 raise ValueError("Failed to load image")
-            quality = 85
+            quality = IMAGE_COMPRESSION_START_QUALITY
             saved = False
-            while quality >= 10:
+            while quality >= IMAGE_COMPRESSION_MIN_QUALITY:
                 img.save(dest_path, quality=quality)
                 if Path(dest_path).stat().st_size <= MAX_PROFILE_PIC_SIZE_BYTES:
                     saved = True
                     break
-                quality -= 10
+                quality -= IMAGE_COMPRESSION_STEP
             if not saved:
                 raise ValueError("Cannot compress image below 5 MB limit")
 
         self._register_in_db(record_id, dest_path)
+        log_action("admin", "UPLOAD_PROFILE_PIC", "profile_pictures", record_id,
+                   f"Uploaded profile picture for record {record_id}")
         return dest_path
 
     def get_profile_picture_path(self, record_id: int) -> Optional[str]:
@@ -115,9 +121,11 @@ class ImageService:
         conn.execute("DELETE FROM profile_pictures WHERE record_id = ?", (record_id,))
         conn.commit()
         logger.info("Deleted profile picture for record %d", record_id)
+        log_action("admin", "DELETE_PROFILE_PIC", "profile_pictures", record_id,
+                   f"Deleted profile picture for record {record_id}")
         return True
 
-    def _remove_old_files(self, record_id: int):
+    def _remove_old_files(self, record_id: int) -> None:
         """Remove existing profile picture files."""
         conn = get_connection()
         row = conn.execute(
@@ -134,7 +142,7 @@ class ImageService:
             conn.execute("DELETE FROM profile_pictures WHERE record_id = ?", (record_id,))
             conn.commit()
 
-    def _register_in_db(self, record_id: int, file_path: str):
+    def _register_in_db(self, record_id: int, file_path: str) -> None:
         """Register profile picture in database."""
         conn = get_connection()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

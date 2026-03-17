@@ -14,6 +14,7 @@ from app.services.dashboard_service import DashboardService
 from app.services.notification_service import NotificationService
 from app.services.preferences_service import PreferencesService
 from app.ui.theme import Colors
+from app.ui.components.dashboard_metrics import MetricCard
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -36,7 +37,7 @@ class DashboardPage(QWidget):
     def _setup_ui(self):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(24, 20, 24, 16)
-        outer.setSpacing(16)
+        outer.setSpacing(0)
 
         # Header
         title = QLabel("Dashboard", self)
@@ -50,7 +51,7 @@ class DashboardPage(QWidget):
 
         self._content = QWidget(scroll)
         self._content_layout = QVBoxLayout(self._content)
-        self._content_layout.setSpacing(20)
+        self._content_layout.setSpacing(16)
         self._content_layout.setContentsMargins(0, 0, 12, 0)
 
         scroll.setWidget(self._content)
@@ -70,82 +71,71 @@ class DashboardPage(QWidget):
         self._content_layout.addStretch()
 
     def _render_summary(self):
-        """Record Summary Panel."""
-        section = QLabel("Records", self._content)
-        section.setStyleSheet(
-            f"font-size: 16px; font-weight: 600; color: {Colors.TEXT_PRIMARY};"
-        )
-        self._content_layout.addWidget(section)
-
-        grid = QGridLayout()
-        grid.setSpacing(12)
-
+        """Record Summary Panel with visual hierarchy and critical alerts."""
         summary = self._dashboard.get_record_summary()
         missing = self._dashboard.get_missing_docs_count()
         expired = self._dashboard.get_expired_visas_count()
         threshold = self._prefs.get_int("visa_expiry_threshold_days", 30)
         expiring = self._dashboard.get_expiring_visas_count(days=threshold)
 
-        metrics = [
-            (str(summary["active"]), "Active Records", "active", Colors.ACCENT),
-            (str(summary["inactive"]), "Inactive Records", "inactive", Colors.TEXT_SECONDARY),
-            (str(missing), "Missing Documents", "missing_docs", Colors.WARNING),
-            (str(expired), "Expired Visas", "expired_visa", Colors.DANGER),
-            (str(expiring), f"Expiring ({threshold}d)", "expiring_visa", Colors.WARNING),
-        ]
+        # Simple title
+        section = QLabel("Summary", self._content)
+        section.setStyleSheet(
+            f"font-size: 14px; font-weight: 600; color: {Colors.TEXT_SECONDARY}; background: transparent;"
+        )
+        self._content_layout.addWidget(section)
 
-        for i, (value, label, filter_key, color) in enumerate(metrics):
-            card = self._create_metric_card(value, label, filter_key, color)
-            grid.addWidget(card, i // 3, i % 3)
+        grid = QGridLayout()
+        grid.setSpacing(12)
+        grid.setContentsMargins(0, 0, 0, 0)
+
+        # Expired Visas - High priority (orange/red) if any exist
+        expired_card = MetricCard(
+            str(expired), 
+            "Expired Visas", 
+            "expired_visa", 
+            priority=MetricCard.PRIORITY_HIGH if expired > 0 else MetricCard.PRIORITY_LOW,
+            parent=self._content
+        )
+        expired_card.clicked.connect(lambda: self.filter_requested.emit("expired_visa"))
+        grid.addWidget(expired_card, 0, 0)
+
+        # Missing Documents - High priority if any exist
+        missing_card = MetricCard(
+            str(missing), 
+            "Missing Documents", 
+            "missing_docs", 
+            priority=MetricCard.PRIORITY_HIGH if missing > 0 else MetricCard.PRIORITY_LOW,
+            parent=self._content
+        )
+        missing_card.clicked.connect(lambda: self.filter_requested.emit("missing_docs"))
+        grid.addWidget(missing_card, 0, 1)
+
+        # Expiring Soon - High priority (orange)
+        expiring_card = MetricCard(
+            str(expiring), 
+            f"Expiring Soon ({threshold}d)", 
+            "expiring_visa", 
+            priority=MetricCard.PRIORITY_HIGH,
+            parent=self._content
+        )
+        expiring_card.clicked.connect(lambda: self.filter_requested.emit("expiring_visa"))
+        grid.addWidget(expiring_card, 0, 2)
+
+        # Active Records - Medium priority (blue)
+        active_card = MetricCard(str(summary["active"]), "Active Records", "active", priority=MetricCard.PRIORITY_MEDIUM, parent=self._content)
+        active_card.clicked.connect(lambda: self.filter_requested.emit("active"))
+        grid.addWidget(active_card, 1, 0)
+
+        # Inactive Records - Low priority (gray)
+        inactive_card = MetricCard(str(summary["inactive"]), "Archived Records", "inactive", priority=MetricCard.PRIORITY_LOW, parent=self._content)
+        inactive_card.clicked.connect(lambda: self.filter_requested.emit("inactive"))
+        grid.addWidget(inactive_card, 1, 1)
 
         grid_widget = QWidget(self._content)
         grid_widget.setLayout(grid)
         self._content_layout.addWidget(grid_widget)
 
-    def _create_metric_card(self, value: str, label: str, filter_key: str, color: str) -> QWidget:
-        """Create a clickable metric card."""
-        card = QPushButton(parent=self._content)
-        card.setCursor(Qt.PointingHandCursor)
-        card.setFixedHeight(96)
-        card.setStyleSheet(
-            f"""QPushButton {{
-                background-color: {Colors.BG_CARD};
-                border: 1px solid {Colors.BORDER_LIGHT};
-                border-radius: 10px;
-                text-align: left;
-                padding: 18px 20px;
-            }}
-            QPushButton:hover {{
-                border-color: {color};
-                background-color: #FAFBFF;
-            }}"""
-        )
-
-        # Subtle drop shadow
-        shadow = QGraphicsDropShadowEffect(card)
-        shadow.setBlurRadius(16)
-        shadow.setOffset(0, 2)
-        shadow.setColor(QColor(0, 0, 0, 13))  # rgba(0,0,0,0.05)
-        card.setGraphicsEffect(shadow)
-
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(16, 10, 0, 0)
-        card_layout.setSpacing(6)
-
-        val_label = QLabel(value, card)
-        val_label.setStyleSheet(
-            f"font-size: 25px; font-weight: 700; color: {color}; background: transparent;"
-        )
-        card_layout.addWidget(val_label)
-
-        desc_label = QLabel(label, card)
-        desc_label.setStyleSheet(
-            f"font-size: 13px; color: {Colors.TEXT_SECONDARY}; background: transparent;"
-        )
-        card_layout.addWidget(desc_label)
-
-        card.clicked.connect(lambda: self.filter_requested.emit(filter_key))
-        return card
 
     def _render_alerts(self):
         """Alerts & Attention Panel."""

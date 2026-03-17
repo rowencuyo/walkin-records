@@ -6,7 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from app.constants import ALLOWED_DOCUMENT_EXTENSIONS, ALLOWED_IMAGE_EXTENSIONS
+from app.constants import (
+    ALLOWED_DOCUMENT_EXTENSIONS, ALLOWED_IMAGE_EXTENSIONS,
+    PASSPORT_MIN_LENGTH, PASSPORT_MAX_LENGTH,
+)
 
 
 def validate_required(value: str, field_name: str) -> Optional[str]:
@@ -36,14 +39,14 @@ def validate_date_required(value: str, field_name: str = "Date") -> Optional[str
 
 
 def validate_passport(value: str) -> Optional[str]:
-    """Validate passport number format (alphanumeric, 5-20 chars)."""
+    """Validate passport number format (alphanumeric, 3-20 chars)."""
     if not value or not value.strip():
         return "Passport Number is required"
     v = value.strip()
     if not re.match(r"^[A-Za-z0-9\-]+$", v):
         return "Passport Number must contain only letters, numbers, and hyphens"
-    if len(v) < 3 or len(v) > 20:
-        return "Passport Number must be between 3 and 20 characters"
+    if len(v) < PASSPORT_MIN_LENGTH or len(v) > PASSPORT_MAX_LENGTH:
+        return f"Passport Number must be between {PASSPORT_MIN_LENGTH} and {PASSPORT_MAX_LENGTH} characters"
     return None
 
 

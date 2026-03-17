@@ -3,13 +3,16 @@ Login page — shown on app startup before granting access.
 Handles both first-time password setup and regular login.
 """
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QMessageBox, QSpacerItem, QSizePolicy,
-)
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLineEdit
 
 from app.services.auth_service import AuthService
 from app.utils.logger import get_logger
+from app.ui.theme import Colors, Spacing, ComponentSize, Typography
+from app.ui.ui_helpers import (
+    create_text_input, create_primary_button, create_heading,
+    create_error_label, create_form_field, create_label,
+    create_card, create_spacer_vertical
+)
 
 logger = get_logger(__name__)
 
@@ -26,105 +29,70 @@ class LoginPage(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
+        """Build the login/setup card UI using modern design system."""
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setAlignment(Qt.AlignCenter)
 
         # Centered card
-        card = QWidget(self)
-        card.setFixedWidth(380)
-        card.setStyleSheet(
-            "QWidget { background-color: #FFFFFF; border-radius: 12px; }"
-        )
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(32, 40, 32, 32)
-        card_layout.setSpacing(16)
+        card, layout = create_card(parent=self)
+        card.setFixedWidth(400)
+        layout.setContentsMargins(ComponentSize.CARD_PADDING,
+                                 ComponentSize.CARD_PADDING,
+                                 ComponentSize.CARD_PADDING,
+                                 ComponentSize.CARD_PADDING)
+        
+        # Title: "Archivium"
+        title = create_heading("Archivium", level=1, parent=card)
+        layout.addWidget(title)
 
-        # Title
-        title = QLabel("Archivium", card)
-        title.setStyleSheet(
-            "font-size: 24px; font-weight: 700; color: #1D1D1F; "
-            "background: transparent;"
-        )
-        title.setAlignment(Qt.AlignCenter)
-        card_layout.addWidget(title)
-
+        # Subtitle
         subtitle_text = (
             "Set up your account" if not self._is_setup
             else "Sign in to continue"
         )
-        subtitle = QLabel(subtitle_text, card)
-        subtitle.setStyleSheet(
-            "font-size: 14px; color: #6E6E73; background: transparent;"
-        )
-        subtitle.setAlignment(Qt.AlignCenter)
-        card_layout.addWidget(subtitle)
+        subtitle = create_heading(subtitle_text, level=4, parent=card)
+        layout.addWidget(subtitle)
 
-        card_layout.addSpacerItem(QSpacerItem(0, 8, QSizePolicy.Minimum, QSizePolicy.Fixed))
+        layout.addWidget(create_spacer_vertical(Spacing.SM))
 
-        # Username
-        username_label = QLabel("Username", card)
-        username_label.setStyleSheet(
-            "font-size: 13px; font-weight: 500; color: #1D1D1F; background: transparent;"
-        )
-        card_layout.addWidget(username_label)
-
-        self._username_input = QLineEdit(card)
-        self._username_input.setPlaceholderText("Enter username")
-        self._username_input.setFixedHeight(38)
+        # Username field
+        self._username_input = create_text_input("Enter username", card)
+        username_field = create_form_field("Username", self._username_input, parent=card)
+        layout.addWidget(username_field)
+        
         if self._is_setup:
             self._username_input.setText(self._auth.get_username())
-        card_layout.addWidget(self._username_input)
 
-        # Password
-        pw_label = QLabel("Password", card)
-        pw_label.setStyleSheet(
-            "font-size: 13px; font-weight: 500; color: #1D1D1F; background: transparent;"
-        )
-        card_layout.addWidget(pw_label)
-
-        self._password_input = QLineEdit(card)
-        self._password_input.setPlaceholderText("Enter password")
+        # Password field
+        self._password_input = create_text_input("Enter password", card)
         self._password_input.setEchoMode(QLineEdit.Password)
-        self._password_input.setFixedHeight(38)
         self._password_input.returnPressed.connect(self._on_submit)
-        card_layout.addWidget(self._password_input)
+        password_field = create_form_field("Password", self._password_input, parent=card)
+        layout.addWidget(password_field)
 
-        # Confirm password (setup only)
+        # Confirm password (only during setup)
         if not self._is_setup:
-            confirm_label = QLabel("Confirm Password", card)
-            confirm_label.setStyleSheet(
-                "font-size: 13px; font-weight: 500; color: #1D1D1F; background: transparent;"
-            )
-            card_layout.addWidget(confirm_label)
-
-            self._confirm_input = QLineEdit(card)
-            self._confirm_input.setPlaceholderText("Confirm password")
+            self._confirm_input = create_text_input("Confirm password", card)
             self._confirm_input.setEchoMode(QLineEdit.Password)
-            self._confirm_input.setFixedHeight(38)
             self._confirm_input.returnPressed.connect(self._on_submit)
-            card_layout.addWidget(self._confirm_input)
+            confirm_field = create_form_field("Confirm Password", self._confirm_input, parent=card)
+            layout.addWidget(confirm_field)
         else:
             self._confirm_input = None
 
         # Error label
-        self._error_label = QLabel("", card)
-        self._error_label.setStyleSheet(
-            "color: #FF3B30; font-size: 13px; background: transparent;"
-        )
-        self._error_label.setWordWrap(True)
+        self._error_label = create_error_label("", card)
         self._error_label.setVisible(False)
-        card_layout.addWidget(self._error_label)
+        layout.addWidget(self._error_label)
 
-        card_layout.addSpacerItem(QSpacerItem(0, 8, QSizePolicy.Minimum, QSizePolicy.Fixed))
+        layout.addWidget(create_spacer_vertical(Spacing.SM))
 
         # Submit button
         btn_text = "Create Account" if not self._is_setup else "Sign In"
-        self._submit_btn = QPushButton(btn_text, card)
-        self._submit_btn.setObjectName("primaryButton")
-        self._submit_btn.setFixedHeight(40)
+        self._submit_btn = create_primary_button(btn_text, card)
         self._submit_btn.clicked.connect(self._on_submit)
-        card_layout.addWidget(self._submit_btn)
+        layout.addWidget(self._submit_btn)
 
         outer.addWidget(card)
 

@@ -10,6 +10,9 @@ from app.models import WalkInRecord
 SEARCH_ROLE = Qt.UserRole + 1
 COMPLETENESS_ROLE = Qt.UserRole + 2
 ACTIVE_STATUS_ROLE = Qt.UserRole + 3
+COUNTRY_ROLE = Qt.UserRole + 4
+ARRIVAL_DATE_ROLE = Qt.UserRole + 5
+CREATED_DATE_ROLE = Qt.UserRole + 6
 
 COLUMNS = [
     ("completeness", "Document"),
@@ -145,6 +148,15 @@ class RecordTableModel(QAbstractTableModel):
 
         if role == ACTIVE_STATUS_ROLE:
             return record.is_active
+        
+        if role == COUNTRY_ROLE:
+            return record.country_of_citizenship or ""
+        
+        if role == ARRIVAL_DATE_ROLE:
+            return record.date_of_arrival or ""
+        
+        if role == CREATED_DATE_ROLE:
+            return record.created_at or ""
 
         return None
 

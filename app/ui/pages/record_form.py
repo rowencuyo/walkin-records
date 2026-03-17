@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from app.constants import (
     Sex, VisaStatus, EducationalLevel, Semester,
     VISA_CATEGORIES, YEAR_LEVELS, COUNTRIES,
+    AUTOSAVE_INTERVAL_MS,
 )
 from app.models import WalkInRecord
 from app.services.record_service import RecordService
@@ -20,10 +21,10 @@ from app.utils.validators import (
     validate_required, validate_date_required, validate_date, validate_passport,
 )
 from app.utils.logger import get_logger
+from app.ui.theme import Spacing, ComponentSize
+from app.ui.ui_helpers import create_heading, create_primary_button, create_secondary_button
 
 logger = get_logger(__name__)
-
-AUTOSAVE_INTERVAL_MS = 30_000  # 30 seconds
 
 
 class RecordForm(QWidget):
@@ -137,25 +138,23 @@ class RecordForm(QWidget):
 
     def _setup_ui(self):
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(24, 20, 24, 16)
-        outer.setSpacing(12)
+        outer.setContentsMargins(
+            Spacing.XXL, Spacing.LG, Spacing.XXL, Spacing.MD
+        )
+        outer.setSpacing(Spacing.MD)
 
         # Header
         header = QHBoxLayout()
         title_text = "Edit Record" if self._record_id else "Add New Record"
-        title = QLabel(title_text, self)
-        title.setObjectName("pageTitle")
+        title = create_heading(title_text, level=1, parent=self)
         header.addWidget(title)
         header.addStretch()
 
-        cancel_btn = QPushButton("Cancel", self)
-        cancel_btn.setFixedHeight(38)
+        cancel_btn = create_secondary_button("Cancel", self)
         cancel_btn.clicked.connect(self._on_cancel)
         header.addWidget(cancel_btn)
 
-        save_btn = QPushButton("Save Record", self)
-        save_btn.setObjectName("primaryButton")
-        save_btn.setFixedHeight(38)
+        save_btn = create_primary_button("Save Record", self)
         save_btn.clicked.connect(self._on_save)
         header.addWidget(save_btn)
 
@@ -168,8 +167,8 @@ class RecordForm(QWidget):
 
         form_widget = QWidget(scroll)
         form_layout = QVBoxLayout(form_widget)
-        form_layout.setSpacing(16)
-        form_layout.setContentsMargins(0, 0, 12, 0)
+        form_layout.setSpacing(Spacing.LG)
+        form_layout.setContentsMargins(0, 0, Spacing.MD, 0)
 
         # Section: Identity
         form_layout.addWidget(self._create_section("Identity", [
@@ -218,8 +217,8 @@ class RecordForm(QWidget):
         """Create a form section group box with clean alignment."""
         group = QGroupBox(title, self)
         layout = QFormLayout()
-        layout.setSpacing(12)
-        layout.setContentsMargins(16, 20, 16, 16)
+        layout.setSpacing(Spacing.MD)
+        layout.setContentsMargins(Spacing.LG, Spacing.LG, Spacing.LG, Spacing.LG)
         layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
         layout.setRowWrapPolicy(QFormLayout.DontWrapRows)
@@ -232,7 +231,7 @@ class RecordForm(QWidget):
             # Create the input widget
             if field_type == "line":
                 widget = QLineEdit(self)
-                widget.setFixedHeight(38)
+                widget.setFixedHeight(ComponentSize.INPUT_MEDIUM)
                 widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             elif field_type == "date":
                 widget = QDateEdit(self)
@@ -241,7 +240,7 @@ class RecordForm(QWidget):
                 widget.setDate(QDate(2000, 1, 1))
                 widget.setSpecialValueText(" ")  # show blank when at minimum
                 widget.setMinimumDate(QDate(1900, 1, 1))
-                widget.setFixedHeight(38)
+                widget.setFixedHeight(ComponentSize.INPUT_MEDIUM)
                 widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             elif field_type == "combo":
                 options = field_def[3] if len(field_def) > 3 else []
@@ -256,14 +255,14 @@ class RecordForm(QWidget):
                 completer.setCompletionMode(QCompleter.PopupCompletion)
                 completer.setFilterMode(Qt.MatchContains)
                 completer.setCaseSensitivity(Qt.CaseInsensitive)
-                widget.setFixedHeight(38)
+                widget.setFixedHeight(ComponentSize.INPUT_MEDIUM)
                 widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             elif field_type == "text":
                 widget = QTextEdit(self)
-                widget.setFixedHeight(100)
+                widget.setFixedHeight(ComponentSize.INPUT_LARGE * 2)
             else:
                 widget = QLineEdit(self)
-                widget.setFixedHeight(38)
+                widget.setFixedHeight(ComponentSize.INPUT_MEDIUM)
                 widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
             self._fields[key] = widget
@@ -276,14 +275,14 @@ class RecordForm(QWidget):
 
             # Wrap widget + error in a vertical layout
             wrapper = QVBoxLayout()
-            wrapper.setSpacing(2)
+            wrapper.setSpacing(Spacing.XS)
             wrapper.setContentsMargins(0, 0, 0, 0)
             wrapper.addWidget(widget)
             wrapper.addWidget(err)
 
             lbl = QLabel(label, self)
             lbl.setObjectName("fieldLabel")
-            lbl.setFixedWidth(260)
+            lbl.setFixedWidth(Spacing.XXXL * 4)  # 48 * 4 = 192px fixed width
             layout.addRow(lbl, wrapper)
 
         group.setLayout(layout)
@@ -340,16 +339,35 @@ class RecordForm(QWidget):
     # ── Validation ──
 
     def _show_error(self, key: str, message: str):
-        """Show inline error for a field."""
+        """Show inline error for a field with visual highlighting."""
         lbl = self._error_labels.get(key)
         if lbl:
             lbl.setText(message)
             lbl.setVisible(True)
+        
+        # Highlight the input field with red border
+        widget = self._fields.get(key)
+        if widget:
+            widget.setStyleSheet(f"""
+                QLineEdit, QComboBox, QDateEdit, QTextEdit {{
+                    border: 2px solid #EF4444;
+                    border-radius: 6px;
+                    padding: 8px;
+                }}
+                QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus {{
+                    border: 2px solid #EF4444;
+                    background-color: #FEE2E2;
+                }}
+            """)
 
     def _clear_errors(self):
-        """Clear all error labels."""
+        """Clear all error labels and remove field highlighting."""
         for lbl in self._error_labels.values():
             lbl.setVisible(False)
+        
+        # Reset field styles
+        for widget in self._fields.values():
+            widget.setStyleSheet("")  # Reset to default theme style
 
     def _validate(self) -> bool:
         """Validate all fields. Returns True if valid."""
@@ -447,6 +465,14 @@ class RecordForm(QWidget):
     def _on_save(self) -> bool:
         """Validate and save the record. Returns True if save succeeded."""
         if not self._validate():
+            # Auto-scroll to first error field
+            self._scroll_to_first_error()
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Please fix the highlighted fields and try again.",
+                QMessageBox.Ok
+            )
             return False
 
         record = self._build_record()
@@ -470,6 +496,24 @@ class RecordForm(QWidget):
             logger.error("Failed to save record: %s", e)
             QMessageBox.critical(self, "Error", f"Failed to save record:\n{e}")
             return False
+
+    def _scroll_to_first_error(self):
+        """Scroll to the first field with an error."""
+        for key, error_lbl in self._error_labels.items():
+            if error_lbl.isVisible():
+                # Get the field widget
+                widget = self._fields.get(key)
+                if widget:
+                    # Find the scroll area parent
+                    parent = widget.parent()
+                    while parent and not isinstance(parent, QScrollArea):
+                        parent = parent.parent()
+                    
+                    if isinstance(parent, QScrollArea):
+                        # Scroll to widget
+                        parent.ensureWidgetVisible(widget)
+                        widget.setFocus()
+                break
 
     def _on_cancel(self):
         """Handle cancel with unsaved changes check."""

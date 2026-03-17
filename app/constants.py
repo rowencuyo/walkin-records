@@ -164,3 +164,25 @@ DEFAULT_PREFERENCES = {
 }
 
 AUTO_LOCK_TIMEOUT_OPTIONS = [5, 10, 15, 30, 60]  # minutes
+
+# ── Timing & Performance ──
+
+AUTOSAVE_INTERVAL_MS = 30_000  # autosave drafts every 30 seconds
+NOTIFICATION_SCAN_INTERVAL_MS = 5 * 60 * 1000  # scan for notifications every 5 minutes
+LOG_ROTATION_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB per log file
+DATABASE_CACHE_SIZE_KB = 8000  # 8 MB SQLite cache
+
+# ── Authentication ──
+
+PASSWORD_HASH_ITERATIONS = 260_000  # PBKDF2-HMAC-SHA256 iterations
+
+# ── Image Compression ──
+
+IMAGE_COMPRESSION_START_QUALITY = 85  # Initial JPEG quality for compression
+IMAGE_COMPRESSION_STEP = 10  # Decrease quality by this amount each iteration
+IMAGE_COMPRESSION_MIN_QUALITY = 10  # Stop compression at this quality
+
+# ── Validation Rules ──
+
+PASSPORT_MIN_LENGTH = 3
+PASSPORT_MAX_LENGTH = 20

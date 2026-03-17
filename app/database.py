@@ -4,6 +4,8 @@ SQLite database connection and schema management.
 import os
 import sqlite3
 from pathlib import Path
+
+from app.constants import DATABASE_CACHE_SIZE_KB
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -37,7 +39,7 @@ def get_connection() -> sqlite3.Connection:
         _connection.execute("PRAGMA journal_mode=WAL")
         _connection.execute("PRAGMA synchronous=NORMAL")
         _connection.execute("PRAGMA foreign_keys=ON")
-        _connection.execute("PRAGMA cache_size=-8000")  # 8 MB cache
+        _connection.execute(f"PRAGMA cache_size=-{DATABASE_CACHE_SIZE_KB}")
         logger.info("Database connection established at %s", DB_PATH)
     return _connection
 

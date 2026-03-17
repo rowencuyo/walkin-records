@@ -6,6 +6,8 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from app.constants import LOG_ROTATION_SIZE_BYTES
+
 _initialized = False
 
 
@@ -24,7 +26,7 @@ def setup_logging():
 
     # File handler with rotation
     fh = RotatingFileHandler(
-        str(log_file), maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+        str(log_file), maxBytes=LOG_ROTATION_SIZE_BYTES, backupCount=3, encoding="utf-8"
     )
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter(

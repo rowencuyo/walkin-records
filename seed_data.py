@@ -17,7 +17,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from app.database import get_connection, initialize_database, DATA_DIR, DOCUMENTS_DIR, PROFILE_PICS_DIR
 
 # ── Config ──
-NUM_RECORDS = 2000
+NUM_RECORDS = 500
 
 # ── Data pools ──
 FIRST_NAMES_M = [

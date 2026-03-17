@@ -15,6 +15,7 @@ from app.models import WalkInRecord
 from app.services.record_service import RecordService
 from app.services.image_service import ImageService
 from app.ui.components.search_bar import SearchBar
+from app.ui.components.batch_operations import BatchOperationsToolbar
 from app.ui.models.record_table_model import RecordTableModel
 from app.ui.models.record_proxy_model import RecordProxyModel
 from app.ui.theme import Colors
@@ -256,6 +257,14 @@ class RecordListPage(QWidget):
         self._search_bar.search_changed.connect(self._on_search_changed)
         layout.addWidget(self._search_bar)
 
+        # Batch Operations Toolbar
+        self._batch_toolbar = BatchOperationsToolbar()
+        self._batch_toolbar.select_all_toggled.connect(self._on_batch_select_all)
+        self._batch_toolbar.export_selected.connect(self._on_batch_export)
+        self._batch_toolbar.archive_selected.connect(self._on_batch_archive)
+        self._batch_toolbar.delete_selected.connect(self._on_batch_delete)
+        layout.addWidget(self._batch_toolbar)
+
         # View stack
         self._view_stack = QStackedWidget()
 
@@ -269,6 +278,8 @@ class RecordListPage(QWidget):
         self._table_view.setAlternatingRowColors(True)
         self._table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table_view.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._table_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._table_view.setFocusPolicy(Qt.NoFocus)
         self._table_view.setSortingEnabled(True)
         self._table_view.verticalHeader().setVisible(False)
         self._table_view.setShowGrid(False)
@@ -277,6 +288,12 @@ class RecordListPage(QWidget):
         self._table_view.horizontalHeader().setDefaultSectionSize(140)
         self._table_view.horizontalHeader().setMinimumSectionSize(80)
         self._table_view.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+
+        # Remove focus outline / selection highlight border on cells
+        self._table_view.setStyleSheet(
+            "QTableView::item:focus { outline: none; }"
+        )
+
         self._table_view.clicked.connect(self._on_table_clicked)
         self._table_view.doubleClicked.connect(self._on_table_double_click)
 
@@ -561,6 +578,44 @@ class RecordListPage(QWidget):
         self._proxy_model.set_active_status(active_status)
 
         self.load_data()
+
+    def _on_batch_select_all(self, checked: bool):
+        """Handle Select All checkbox in batch toolbar."""
+        if checked:
+            # Select all visible records
+            for i in range(self._proxy_model.rowCount()):
+                record = self._table_model.get_record(self._proxy_model.mapToSource(self._proxy_model.index(i, 0)).row())
+                if record and record.id:
+                    self._batch_toolbar.select_record(record.id)
+        else:
+            # Deselect all
+            self._batch_toolbar.deselect_all()
+
+    def _on_batch_export(self, record_ids: list[int]):
+        """Export selected records."""
+        from app.utils.logger import get_logger
+        logger = get_logger(__name__)
+        logger.info(f"Exporting {len(record_ids)} records: {record_ids}")
+        # TODO: Implement export logic
+        self._batch_toolbar.deselect_all()
+
+    def _on_batch_archive(self, record_ids: list[int]):
+        """Archive selected records."""
+        from app.utils.logger import get_logger
+        logger = get_logger(__name__)
+        logger.info(f"Archiving {len(record_ids)} records: {record_ids}")
+        # TODO: Implement archive logic with confirmation
+        self.load_data()
+        self._batch_toolbar.deselect_all()
+
+    def _on_batch_delete(self, record_ids: list[int]):
+        """Delete selected records (with confirmation)."""
+        from app.utils.logger import get_logger
+        logger = get_logger(__name__)
+        logger.info(f"Deleting {len(record_ids)} records: {record_ids}")
+        # TODO: Implement delete logic with confirmation dialog
+        self.load_data()
+        self._batch_toolbar.deselect_all()
 
     # -- Events --
 

@@ -54,6 +54,7 @@ class SettingsPage(QWidget):
 
         content_layout.addWidget(self._create_security_section())
         content_layout.addWidget(self._create_notification_section())
+        content_layout.addWidget(self._create_alerts_section())
         content_layout.addWidget(self._create_export_section())
         content_layout.addWidget(self._create_backup_section())
         content_layout.addWidget(self._create_audit_section())
@@ -219,6 +220,71 @@ class SettingsPage(QWidget):
         retention_row.addWidget(self._retention_spin)
         retention_row.addStretch()
         layout.addLayout(retention_row)
+
+        layout.addWidget(self._make_divider())
+        return section
+
+    # ── Automated Alerts ──
+
+    def _create_alerts_section(self) -> QWidget:
+        """Create automated alerts and reminders settings."""
+        section = QWidget(self)
+        layout = QVBoxLayout(section)
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 16, 0, 16)
+
+        layout.addWidget(self._make_section_header("Automated Alerts"))
+        layout.addSpacing(4)
+
+        desc = QLabel(
+            "Configure automatic alerts for visa expiry, missing documents, and other important events.",
+            section
+        )
+        desc.setWordWrap(True)
+        desc.setObjectName("subtitleLabel")
+        layout.addWidget(desc)
+
+        # Visa status alerts
+        self._alert_visa_cb = QCheckBox("Visa status alerts (expired & expiring)", section)
+        self._alert_visa_cb.setChecked(self._prefs.get_bool("alert_visa_status"))
+        self._alert_visa_cb.stateChanged.connect(
+            lambda: self._prefs.set_bool("alert_visa_status", self._alert_visa_cb.isChecked())
+        )
+        layout.addWidget(self._alert_visa_cb)
+
+        # Document alerts
+        self._alert_docs_cb = QCheckBox("Missing document alerts", section)
+        self._alert_docs_cb.setChecked(self._prefs.get_bool("alert_missing_documents"))
+        self._alert_docs_cb.stateChanged.connect(
+            lambda: self._prefs.set_bool("alert_missing_documents", self._alert_docs_cb.isChecked())
+        )
+        layout.addWidget(self._alert_docs_cb)
+
+        # Email digest
+        self._alert_email_cb = QCheckBox("Daily email digest with important alerts", section)
+        self._alert_email_cb.setChecked(self._prefs.get_bool("alert_email_digest"))
+        self._alert_email_cb.stateChanged.connect(
+            lambda: self._prefs.set_bool("alert_email_digest", self._alert_email_cb.isChecked())
+        )
+        layout.addWidget(self._alert_email_cb)
+
+        # Digest time
+        digest_row = QHBoxLayout()
+        digest_row.addWidget(QLabel("Send digest at:", section))
+        self._alert_digest_time = QComboBox(section)
+        for hour in range(0, 24, 2):
+            time_str = f"{hour:02d}:00"
+            self._alert_digest_time.addItem(time_str, time_str)
+        current_time = self._prefs.get("alert_digest_time", "09:00")
+        idx = self._alert_digest_time.findData(current_time)
+        if idx >= 0:
+            self._alert_digest_time.setCurrentIndex(idx)
+        self._alert_digest_time.currentIndexChanged.connect(
+            lambda: self._prefs.set("alert_digest_time", self._alert_digest_time.currentData())
+        )
+        digest_row.addWidget(self._alert_digest_time)
+        digest_row.addStretch()
+        layout.addLayout(digest_row)
 
         layout.addWidget(self._make_divider())
         return section
