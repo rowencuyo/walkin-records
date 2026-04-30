@@ -579,7 +579,7 @@ class SettingsPage(QWidget):
             action.setToolTip("Show password")
             field.addAction(action, QLineEdit.TrailingPosition)
 
-            def _toggle(f=field, a=action):
+            def _toggle(_checked=False, f=field, a=action):
                 if f.echoMode() == QLineEdit.Password:
                     f.setEchoMode(QLineEdit.Normal)
                     a.setIcon(eye_closed)
