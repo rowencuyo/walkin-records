@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from app.database import get_connection, DATA_DIR
 from app.models import Notification
 from app.constants import (
-    NotificationSeverity, NotificationCategory, NotificationStatus,
+    NotificationSeverity, NotificationCategory,
 )
 from app.services.preferences_service import PreferencesService
 from app.utils.logger import get_logger
@@ -33,107 +33,126 @@ class NotificationService:
         threshold_date = (datetime.now() + timedelta(days=threshold_days)).strftime("%Y-%m-%d")
 
         # ── Expired visas ──
-        if self._prefs.get_bool("notify_visa_expiry"):
-            expired = conn.execute(
-                """SELECT id, first_name, last_name, visa_validity_date
-                   FROM walkin_records
-                   WHERE is_active = 1 AND visa_validity_date != '' AND visa_validity_date < ?""",
-                (today,),
-            ).fetchall()
-            for r in expired:
-                group_key = f"visa_expiry_{r['id']}"
-                if not self._notification_exists(group_key):
-                    self._create(
-                        severity=NotificationSeverity.CRITICAL.value,
-                        category=NotificationCategory.VISA_EXPIRY.value,
-                        title="Visa Expired",
-                        message=f"{r['first_name']} {r['last_name']} — visa expired on {r['visa_validity_date']}",
-                        group_key=group_key,
-                        record_id=r["id"],
-                        created_at=now,
-                    )
+        try:
+            if self._prefs.get_bool("notify_visa_expiry"):
+                expired = conn.execute(
+                    """SELECT id, first_name, last_name, visa_validity_date
+                       FROM walkin_records
+                       WHERE is_active = 1 AND visa_validity_date != '' AND visa_validity_date < ?""",
+                    (today,),
+                ).fetchall()
+                for r in expired:
+                    group_key = f"visa_expiry_{r['id']}"
+                    if not self._notification_exists(group_key):
+                        self._create(
+                            severity=NotificationSeverity.CRITICAL.value,
+                            category=NotificationCategory.VISA_EXPIRY.value,
+                            title="Visa Expired",
+                            message=f"{r['first_name']} {r['last_name']} — visa expired on {r['visa_validity_date']}",
+                            group_key=group_key,
+                            record_id=r["id"],
+                            created_at=now,
+                        )
+        except Exception as e:
+            logger.error("Notification scan (expired visas) failed: %s", e)
 
         # ── Expiring visas ──
-        if self._prefs.get_bool("notify_visa_expiry"):
-            expiring = conn.execute(
-                """SELECT id, first_name, last_name, visa_validity_date
-                   FROM walkin_records
-                   WHERE is_active = 1 AND visa_validity_date != ''
-                   AND visa_validity_date >= ? AND visa_validity_date <= ?""",
-                (today, threshold_date),
-            ).fetchall()
-            for r in expiring:
-                group_key = f"visa_expiring_{r['id']}"
-                if not self._notification_exists(group_key):
-                    self._create(
-                        severity=NotificationSeverity.WARNING.value,
-                        category=NotificationCategory.VISA_EXPIRING.value,
-                        title="Visa Expiring Soon",
-                        message=f"{r['first_name']} {r['last_name']} — visa expires {r['visa_validity_date']}",
-                        group_key=group_key,
-                        record_id=r["id"],
-                        created_at=now,
-                    )
+        try:
+            if self._prefs.get_bool("notify_visa_expiry"):
+                expiring = conn.execute(
+                    """SELECT id, first_name, last_name, visa_validity_date
+                       FROM walkin_records
+                       WHERE is_active = 1 AND visa_validity_date != ''
+                       AND visa_validity_date >= ? AND visa_validity_date <= ?""",
+                    (today, threshold_date),
+                ).fetchall()
+                for r in expiring:
+                    group_key = f"visa_expiring_{r['id']}"
+                    if not self._notification_exists(group_key):
+                        self._create(
+                            severity=NotificationSeverity.WARNING.value,
+                            category=NotificationCategory.VISA_EXPIRING.value,
+                            title="Visa Expiring Soon",
+                            message=f"{r['first_name']} {r['last_name']} — visa expires {r['visa_validity_date']}",
+                            group_key=group_key,
+                            record_id=r["id"],
+                            created_at=now,
+                        )
+        except Exception as e:
+            logger.error("Notification scan (expiring visas) failed: %s", e)
 
         # ── Missing documents ──
-        if self._prefs.get_bool("notify_missing_docs"):
-            from app.constants import DocumentType
-            required_count = len(DocumentType)
-            missing = conn.execute(
-                f"""SELECT w.id, w.first_name, w.last_name
-                   FROM walkin_records w
-                   WHERE w.is_active = 1
-                   AND (SELECT COUNT(DISTINCT d.document_type) FROM documents d WHERE d.record_id = w.id) < ?""",
-                (required_count,),
-            ).fetchall()
-            for r in missing:
-                group_key = f"missing_docs_{r['id']}"
-                if not self._notification_exists(group_key):
-                    self._create(
-                        severity=NotificationSeverity.WARNING.value,
-                        category=NotificationCategory.MISSING_DOCS.value,
-                        title="Incomplete Documents",
-                        message=f"{r['first_name']} {r['last_name']} — missing required documents",
-                        group_key=group_key,
-                        record_id=r["id"],
-                        created_at=now,
-                    )
+        try:
+            if self._prefs.get_bool("notify_missing_docs"):
+                from app.constants import DocumentType
+                required_count = len(DocumentType)
+                missing = conn.execute(
+                    f"""SELECT w.id, w.first_name, w.last_name
+                       FROM walkin_records w
+                       WHERE w.is_active = 1
+                       AND (SELECT COUNT(DISTINCT d.document_type) FROM documents d WHERE d.record_id = w.id) < ?""",
+                    (required_count,),
+                ).fetchall()
+                for r in missing:
+                    group_key = f"missing_docs_{r['id']}"
+                    if not self._notification_exists(group_key):
+                        self._create(
+                            severity=NotificationSeverity.WARNING.value,
+                            category=NotificationCategory.MISSING_DOCS.value,
+                            title="Incomplete Documents",
+                            message=f"{r['first_name']} {r['last_name']} — missing required documents",
+                            group_key=group_key,
+                            record_id=r["id"],
+                            created_at=now,
+                        )
+        except Exception as e:
+            logger.error("Notification scan (missing docs) failed: %s", e)
 
         # ── Backup overdue ──
-        if self._prefs.get_bool("notify_backup_reminder"):
-            import json
-            backup_overdue = True
-            try:
-                if BACKUP_META_FILE.exists():
-                    with open(BACKUP_META_FILE, "r") as f:
-                        meta = json.load(f)
-                    last = datetime.fromisoformat(meta.get("last_backup", ""))
-                    if (datetime.now() - last).days < 7:
-                        backup_overdue = False
-            except Exception:
-                pass
+        try:
+            if self._prefs.get_bool("notify_backup_reminder"):
+                import json
+                backup_overdue = True
+                try:
+                    if BACKUP_META_FILE.exists():
+                        with open(BACKUP_META_FILE, "r") as f:
+                            meta = json.load(f)
+                        last = datetime.fromisoformat(meta.get("last_backup", ""))
+                        if (datetime.now() - last).days < 7:
+                            backup_overdue = False
+                except Exception:
+                    pass
 
-            group_key = "backup_overdue"
-            if backup_overdue and not self._notification_exists(group_key):
-                self._create(
-                    severity=NotificationSeverity.INFO.value,
-                    category=NotificationCategory.BACKUP_OVERDUE.value,
-                    title="Backup Reminder",
-                    message="No backup has been created in the last 7 days",
-                    group_key=group_key,
-                    record_id=None,
-                    created_at=now,
-                )
-            elif not backup_overdue:
-                # Auto-resolve
-                self._resolve_by_group(group_key, now)
+                group_key = "backup_overdue"
+                if backup_overdue and not self._notification_exists(group_key):
+                    self._create(
+                        severity=NotificationSeverity.INFO.value,
+                        category=NotificationCategory.BACKUP_OVERDUE.value,
+                        title="Backup Reminder",
+                        message="No backup has been created in the last 7 days",
+                        group_key=group_key,
+                        record_id=None,
+                        created_at=now,
+                    )
+                elif not backup_overdue:
+                    # Auto-resolve
+                    self._resolve_by_group(group_key, now)
+        except Exception as e:
+            logger.error("Notification scan (backup check) failed: %s", e)
 
         # ── Auto-resolve resolved conditions ──
-        self._auto_resolve_visas(today, now)
+        try:
+            self._auto_resolve_visas(today, threshold_date, now)
+            self._auto_resolve_missing_docs(now)
+        except Exception as e:
+            logger.error("Notification scan (auto-resolve) failed: %s", e)
 
         # ── Cleanup old notifications ──
-        retention = self._prefs.get_int("notification_retention_days", 90)
-        self._cleanup_old(retention)
+        try:
+            retention = self._prefs.get_int("notification_retention_days", 90)
+            self._cleanup_old(retention)
+        except Exception as e:
+            logger.error("Notification scan (cleanup) failed: %s", e)
 
     # ── CRUD ──
 
@@ -208,12 +227,21 @@ class NotificationService:
         conn.execute("UPDATE notifications SET status = 'read' WHERE status = 'unread'")
         conn.commit()
 
+    def mark_read_by_record(self, record_id: int):
+        """Mark all unread notifications for a specific record as read."""
+        conn = get_connection()
+        conn.execute(
+            "UPDATE notifications SET status = 'read' WHERE record_id = ? AND status = 'unread'",
+            (record_id,),
+        )
+        conn.commit()
+
     # ── Helpers ──
 
     def _notification_exists(self, group_key: str) -> bool:
         conn = get_connection()
         row = conn.execute(
-            "SELECT id FROM notifications WHERE group_key = ? AND status IN ('unread', 'read')",
+            "SELECT id FROM notifications WHERE group_key = ? AND status IN ('unread', 'read', 'dismissed')",
             (group_key,),
         ).fetchone()
         return row is not None
@@ -235,24 +263,54 @@ class NotificationService:
     def _resolve_by_group(self, group_key: str, now: str):
         conn = get_connection()
         conn.execute(
-            "UPDATE notifications SET status = 'resolved', resolved_at = ? WHERE group_key = ? AND status IN ('unread', 'read')",
+            "UPDATE notifications SET status = 'resolved', resolved_at = ? WHERE group_key = ? AND status IN ('unread', 'read', 'dismissed')",
             (now, group_key),
         )
         conn.commit()
 
-    def _auto_resolve_visas(self, today: str, now: str):
+    def _auto_resolve_visas(self, today: str, threshold_date: str, now: str):
         """Auto-resolve visa notifications for records that are no longer active or whose visa was updated."""
         conn = get_connection()
-        # Find visa_expiry notifications where visa is no longer expired
+        # Resolve 'visa_expiry' if no longer expired
         conn.execute(
             """UPDATE notifications SET status = 'resolved', resolved_at = ?
-               WHERE category = 'visa_expiry' AND status IN ('unread', 'read')
+               WHERE category = 'visa_expiry' AND status IN ('unread', 'read', 'dismissed')
                AND record_id IS NOT NULL
                AND record_id NOT IN (
                    SELECT id FROM walkin_records
                    WHERE is_active = 1 AND visa_validity_date != '' AND visa_validity_date < ?
                )""",
             (now, today),
+        )
+        # Resolve 'visa_expiring' if no longer in the warning window
+        conn.execute(
+            """UPDATE notifications SET status = 'resolved', resolved_at = ?
+               WHERE category = 'visa_expiring' AND status IN ('unread', 'read', 'dismissed')
+               AND record_id IS NOT NULL
+               AND record_id NOT IN (
+                   SELECT id FROM walkin_records
+                   WHERE is_active = 1 AND visa_validity_date != '' 
+                   AND visa_validity_date >= ? AND visa_validity_date <= ?
+               )""",
+            (now, today, threshold_date),
+        )
+        conn.commit()
+
+    def _auto_resolve_missing_docs(self, now: str):
+        """Auto-resolve missing document notifications if all required files are now present."""
+        from app.constants import DocumentType
+        required_count = len(DocumentType)
+        conn = get_connection()
+        conn.execute(
+            f"""UPDATE notifications SET status = 'resolved', resolved_at = ?
+               WHERE category = 'missing_docs' AND status IN ('unread', 'read', 'dismissed')
+               AND record_id IS NOT NULL
+               AND record_id NOT IN (
+                   SELECT w.id FROM walkin_records w
+                   WHERE w.is_active = 1
+                   AND (SELECT COUNT(DISTINCT d.document_type) FROM documents d WHERE d.record_id = w.id) < ?
+               )""",
+            (now, required_count),
         )
         conn.commit()
 

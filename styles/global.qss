@@ -240,10 +240,6 @@ QDateEdit:focus {
     border-color: #4F8EF7;
 }
 
-QDateEdit:focus {
-    border-color: #4F8EF7;
-}
-
 /* ── Calendar Widget ── */
 QCalendarWidget QWidget#qt_calendar_navigationbar {
     background-color: #F0F1F5;

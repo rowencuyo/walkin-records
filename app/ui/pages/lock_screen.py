@@ -3,6 +3,7 @@ Lock screen — shown on manual lock or idle auto-lock.
 Password-only entry, username displayed but not editable.
 """
 from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit,
     QPushButton, QSpacerItem, QSizePolicy,
@@ -10,8 +11,11 @@ from PySide6.QtWidgets import (
 
 from app.services.auth_service import AuthService
 from app.utils.logger import get_logger
+from app.utils.paths import get_bundle_dir
 
 logger = get_logger(__name__)
+
+_ASSETS = get_bundle_dir() / "assets"
 
 
 class LockScreen(QWidget):
@@ -22,6 +26,8 @@ class LockScreen(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._auth = AuthService()
+        self._eye_open = QIcon(str(_ASSETS / "eye_open.svg"))
+        self._eye_closed = QIcon(str(_ASSETS / "eye_closed.svg"))
         self._setup_ui()
 
     def _setup_ui(self):
@@ -69,6 +75,12 @@ class LockScreen(QWidget):
         self._password_input.setEchoMode(QLineEdit.Password)
         self._password_input.setFixedHeight(38)
         self._password_input.returnPressed.connect(self._on_unlock)
+
+        # Inline eye toggle
+        self._eye_action = QAction(self._eye_open, "", self._password_input)
+        self._eye_action.setToolTip("Show password")
+        self._password_input.addAction(self._eye_action, QLineEdit.TrailingPosition)
+        self._eye_action.triggered.connect(self._toggle_visibility)
         card_layout.addWidget(self._password_input)
 
         # Error label
@@ -90,9 +102,23 @@ class LockScreen(QWidget):
 
         outer.addWidget(card)
 
+    def _toggle_visibility(self):
+        """Toggle password field between visible and hidden."""
+        if self._password_input.echoMode() == QLineEdit.Password:
+            self._password_input.setEchoMode(QLineEdit.Normal)
+            self._eye_action.setIcon(self._eye_closed)
+            self._eye_action.setToolTip("Hide password")
+        else:
+            self._password_input.setEchoMode(QLineEdit.Password)
+            self._eye_action.setIcon(self._eye_open)
+            self._eye_action.setToolTip("Show password")
+
     def focus_password(self):
         """Focus the password field when shown."""
         self._password_input.clear()
+        self._password_input.setEchoMode(QLineEdit.Password)
+        self._eye_action.setIcon(self._eye_open)
+        self._eye_action.setToolTip("Show password")
         self._error_label.setVisible(False)
         self._password_input.setFocus()
 

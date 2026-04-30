@@ -10,15 +10,16 @@ from openpyxl import load_workbook
 from app.database import get_connection
 from app.models import WalkInRecord
 from app.utils.logger import get_logger
+from app.utils.paths import get_bundle_dir
 
 logger = get_logger(__name__)
 
-# Path to the bundled template (project root)
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-TEMPLATE_PATH = _PROJECT_ROOT / "WalkIn_Records_Export.xlsx"
+# Path to the bundled template (extracted by PyInstaller or project root in dev)
+_BUNDLE_DIR = get_bundle_dir()
+TEMPLATE_PATH = _BUNDLE_DIR / "WalkIn_Records_Export.xlsx"
 
 # Data starts on row 6 in the template
-_DATA_START_ROW = 6
+_DATA_START_ROW = 6  # Rows 1-5 are the template title/header block
 
 
 class ExportService:
@@ -98,9 +99,35 @@ class ExportService:
             ws.cell(row=row, column=22, value=rec.visa_grant_date)         # VISA GRANT DATE
             ws.cell(row=row, column=23, value=rec.visa_validity_date)      # VISA VALIDITY DATE
             ws.cell(row=row, column=24, value=rec.visa_status)             # STATUS
-            ws.cell(row=row, column=25, value=rec.enrollment_status)        # REMARKS
+            ws.cell(row=row, column=25, value=rec.remarks)                  # REMARKS
 
-        wb.save(output_path)
+        try:
+            wb.save(output_path)
+        except PermissionError:
+            wb.close()
+            raise PermissionError(
+                f"Cannot save to '{output_path}'. "
+                "The file may already be open in another application. "
+                "Close it and try again."
+            )
         wb.close()
         logger.info("Exported %d records to %s", len(records), output_path)
+        return len(records)
+
+    def export_to_csv(self, records: list[WalkInRecord], output_path: str) -> int:
+        """
+        Export records to a plain CSV file using only the standard library.
+        Use as a fallback when the Excel template is unavailable.
+        Returns the number of records written.
+        """
+        import csv
+        if not records:
+            return 0
+        fieldnames = list(records[0].to_dict().keys())
+        with open(output_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for rec in records:
+                writer.writerow(rec.to_dict())
+        logger.info("CSV exported %d records to %s", len(records), output_path)
         return len(records)

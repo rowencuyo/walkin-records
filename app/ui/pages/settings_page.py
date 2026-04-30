@@ -13,7 +13,8 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from app.database import DATA_DIR, DB_PATH, close_connection, initialize_database
+from app import __version__
+from app.database import DATA_DIR, DB_PATH, get_connection, close_connection, initialize_database
 from app.services.auth_service import AuthService
 from app.services.preferences_service import PreferencesService
 from app.services.export_service import ExportService
@@ -122,13 +123,15 @@ class SettingsPage(QWidget):
                 QLabel("Username:", section),
                 QLabel(meta.get("username", "admin"), section),
             )
+            pw_changed = meta.get("password_changed_at") or "Never"
             info_layout.addRow(
                 QLabel("Password last changed:", section),
-                QLabel(meta.get("password_changed_at", "Never")[:16], section),
+                QLabel(pw_changed[:16], section),
             )
+            un_changed = meta.get("username_changed_at") or "Never"
             info_layout.addRow(
                 QLabel("Username last changed:", section),
-                QLabel(meta.get("username_changed_at", "Never")[:16], section),
+                QLabel(un_changed[:16], section),
             )
             failed = meta.get("failed_attempts", 0)
             if failed:
@@ -294,9 +297,13 @@ class SettingsPage(QWidget):
             )
             return
 
+        from PySide6.QtCore import QStandardPaths
+        default_dir = QStandardPaths.writableLocation(QStandardPaths.DesktopLocation)
+        default_path = Path(default_dir) / f"WalkIn_Records_Export_{start}_to_{end}.xlsx"
+
         output_path, _ = QFileDialog.getSaveFileName(
             self, "Save Export As",
-            f"WalkIn_Records_Export_{start}_to_{end}.xlsx",
+            str(default_path),
             "Excel Files (*.xlsx)",
         )
         if not output_path:
@@ -305,7 +312,7 @@ class SettingsPage(QWidget):
         try:
             count = self._export.export_to_excel(records, output_path)
             log_action(
-                "admin", "EXPORT_DATA", "export",
+                self._auth.get_username(), "EXPORT_DATA", "export",
                 details=f"Exported {count} records ({start} to {end}) to {output_path}",
             )
             QMessageBox.information(
@@ -378,16 +385,20 @@ class SettingsPage(QWidget):
         return "No database"
 
     def _on_backup(self):
+        from PySide6.QtCore import QStandardPaths
+        home = QStandardPaths.writableLocation(QStandardPaths.HomeLocation)
         dest_dir = QFileDialog.getExistingDirectory(
-            self, "Select Backup Destination"
+            self, "Select Backup Destination", home
         )
         if not dest_dir:
             return
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_dir = Path(dest_dir) / f"archivium_backup_{timestamp}"
+        backup_dir = Path(dest_dir) / f"iss_backup_{timestamp}"
 
         try:
+            # Flush WAL data to main DB file before copying to ensure a consistent backup
+            get_connection().execute("PRAGMA wal_checkpoint(TRUNCATE)")
             shutil.copytree(str(DATA_DIR), str(backup_dir))
             self._db_size_label.setText(self._get_db_size())
             self._save_backup_timestamp()
@@ -411,8 +422,10 @@ class SettingsPage(QWidget):
         if reply != QMessageBox.Yes:
             return
 
+        from PySide6.QtCore import QStandardPaths
+        home = QStandardPaths.writableLocation(QStandardPaths.HomeLocation)
         src_dir = QFileDialog.getExistingDirectory(
-            self, "Select Backup Folder to Restore"
+            self, "Select Backup Folder to Restore", home
         )
         if not src_dir:
             return
@@ -517,8 +530,8 @@ class SettingsPage(QWidget):
         header = self._make_section_header("About")
         layout.addRow(header)
 
-        layout.addRow(QLabel("Application:", section), QLabel("Archivium", section))
-        layout.addRow(QLabel("Version:", section), QLabel("1.2", section))
+        layout.addRow(QLabel("Application:", section), QLabel("International Student Services", section))
+        layout.addRow(QLabel("Version:", section), QLabel(__version__, section))
 
         from app.database import DATA_DIR
         dir_label = QLabel(str(DATA_DIR), section)
@@ -540,39 +553,99 @@ class SettingsPage(QWidget):
             self._prefs.set_int("idle_lock_timeout_min", minutes)
 
     def _on_change_password(self):
-        from PySide6.QtWidgets import QInputDialog
+        from PySide6.QtWidgets import QDialog, QDialogButtonBox
+        from PySide6.QtGui import QAction, QIcon
+        from app.utils.paths import get_bundle_dir
 
-        current, ok = QInputDialog.getText(
-            self, "Change Password", "Current password:", QLineEdit.Password
-        )
-        if not ok or not current:
-            return
+        assets = get_bundle_dir() / "assets"
+        eye_open = QIcon(str(assets / "eye_open.svg"))
+        eye_closed = QIcon(str(assets / "eye_closed.svg"))
 
-        new_pw, ok = QInputDialog.getText(
-            self, "Change Password", "New password:", QLineEdit.Password
-        )
-        if not ok or not new_pw:
-            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Change Password")
+        dialog.setFixedWidth(380)
+        dlg_layout = QVBoxLayout(dialog)
+        dlg_layout.setSpacing(12)
+        dlg_layout.setContentsMargins(24, 20, 24, 20)
 
-        confirm, ok = QInputDialog.getText(
-            self, "Change Password", "Confirm new password:", QLineEdit.Password
-        )
-        if not ok:
-            return
+        def _make_pw_field(placeholder):
+            """Create a password QLineEdit with an inline eye toggle."""
+            field = QLineEdit(dialog)
+            field.setPlaceholderText(placeholder)
+            field.setEchoMode(QLineEdit.Password)
+            field.setFixedHeight(36)
 
-        if new_pw != confirm:
-            QMessageBox.warning(self, "Error", "Passwords do not match")
-            return
+            action = QAction(eye_open, "", field)
+            action.setToolTip("Show password")
+            field.addAction(action, QLineEdit.TrailingPosition)
 
-        if len(new_pw) < 4:
-            QMessageBox.warning(self, "Error", "Password must be at least 4 characters")
-            return
+            def _toggle(f=field, a=action):
+                if f.echoMode() == QLineEdit.Password:
+                    f.setEchoMode(QLineEdit.Normal)
+                    a.setIcon(eye_closed)
+                    a.setToolTip("Hide password")
+                else:
+                    f.setEchoMode(QLineEdit.Password)
+                    a.setIcon(eye_open)
+                    a.setToolTip("Show password")
 
-        success, err = self._auth.change_password(current, new_pw)
-        if success:
-            QMessageBox.information(self, "Success", "Password changed successfully")
-        else:
-            QMessageBox.warning(self, "Error", err)
+            action.triggered.connect(_toggle)
+            return field
+
+        dlg_layout.addWidget(QLabel("Current password:"))
+        current_field = _make_pw_field("Enter current password")
+        dlg_layout.addWidget(current_field)
+
+        dlg_layout.addWidget(QLabel("New password:"))
+        new_field = _make_pw_field("Enter new password")
+        dlg_layout.addWidget(new_field)
+
+        dlg_layout.addWidget(QLabel("Confirm new password:"))
+        confirm_field = _make_pw_field("Confirm new password")
+        dlg_layout.addWidget(confirm_field)
+
+        error_label = QLabel("")
+        error_label.setStyleSheet("color: #FF3B30; font-size: 13px;")
+        error_label.setWordWrap(True)
+        error_label.setVisible(False)
+        dlg_layout.addWidget(error_label)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, dialog)
+        dlg_layout.addWidget(buttons)
+        buttons.rejected.connect(dialog.reject)
+
+        def _on_ok():
+            current = current_field.text()
+            new_pw = new_field.text()
+            confirm = confirm_field.text()
+
+            if not current:
+                error_label.setText("Current password is required")
+                error_label.setVisible(True)
+                return
+            if not new_pw:
+                error_label.setText("New password is required")
+                error_label.setVisible(True)
+                return
+            if new_pw != confirm:
+                error_label.setText("Passwords do not match")
+                error_label.setVisible(True)
+                return
+            if len(new_pw) < 4:
+                error_label.setText("Password must be at least 4 characters")
+                error_label.setVisible(True)
+                return
+
+            success, err = self._auth.change_password(current, new_pw)
+            if success:
+                dialog.accept()
+                QMessageBox.information(self, "Success", "Password changed successfully")
+            else:
+                error_label.setText(err)
+                error_label.setVisible(True)
+
+        buttons.accepted.connect(_on_ok)
+        dialog.exec()
 
     def _on_change_username(self):
         from PySide6.QtWidgets import QInputDialog

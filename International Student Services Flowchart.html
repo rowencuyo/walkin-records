@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>International Student Services - System Architecture Flowchart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --primary: #0284c7;
+            --secondary: #7c3aed;
+            --accent: #db2777;
+            --text: #0f172a;
+            --text-dim: #475569;
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --glow: 0 10px 30px rgba(2, 132, 199, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 60px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 80px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Flowchart Container */
+        .flow-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 100px;
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* Connectors */
+        .connector {
+            position: absolute;
+            z-index: -1;
+            stroke: #cbd5e1;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 5, 5;
+            animation: dash 20s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+
+        /* Flow Level */
+        .level {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        /* Nodes */
+        .node {
+            background: var(--card-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 24px;
+            width: 280px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        .node:hover {
+            transform: translateY(-10px) scale(1.05);
+            border-color: var(--primary);
+            box-shadow: var(--glow);
+        }
+
+        .node i {
+            font-style: normal;
+            font-size: 0.8rem;
+            color: var(--primary);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .node h3 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .node p {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .node .details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-top: 0;
+            opacity: 0;
+        }
+
+        .node:hover .details {
+            max-height: 200px;
+            margin-top: 15px;
+            opacity: 1;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        /* Specific styles for node types */
+        .node.entry { border-top: 4px solid var(--primary); }
+        .node.process { border-top: 4px solid var(--secondary); }
+        .node.data { border-top: 4px solid var(--accent); }
+
+        /* Animation Keyframes */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Pulse for active points */
+        .pulse {
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 0 rgba(2, 132, 199, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(0.95); box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.7); }
+            70% { transform: translateX(-50%) scale(1); box-shadow: 0 0 0 10px rgba(2, 132, 199, 0); }
+            100% { transform: translateX(-50%) scale(0.95); box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+        }
+
+        /* Step Numbers */
+        .step-num {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            background: var(--primary);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);
+            border: 3px solid var(--bg-color);
+        }
+
+        /* Summary Section */
+        .summary-section {
+            margin-top: 120px;
+            width: 100%;
+            max-width: 1000px;
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+        }
+
+        .summary-section h2 {
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2rem;
+            color: var(--text);
+        }
+
+        .journey {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+        }
+
+        .journey-step {
+            text-align: center;
+        }
+
+        .journey-step .icon-box {
+            width: 50px;
+            height: 50px;
+            background: #f1f5f9;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 1.2rem;
+        }
+
+        .journey-step h4 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .journey-step p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        .footer {
+            margin-top: 100px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        /* SVG Overlay for Arrows */
+        #svg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>International Student Services System Flow</h1>
+        <p>A simple overview of how our system securely manages student records and documentation.</p>
+    </div>
+
+    <div class="flow-container">
+        <!-- SVG for lines -->
+        <svg id="svg-canvas">
+            <!-- Lines will be drawn here via JS -->
+        </svg>
+
+        <!-- Level 1: Start -->
+        <div class="level">
+            <div class="node entry">
+                <div class="step-num">01</div>
+                <div class="pulse"></div>
+                <i>Step One</i>
+                <h3>Getting Started</h3>
+                <p>Log in securely to see your personalized homepage and alerts.</p>
+                <div class="details">
+                    • <b>Dashboard</b>: View your daily tasks and alerts.<br>
+                    • <b>Easy Access</b>: Securely open your workspace.<br>
+                    • <b>Reminders</b>: See important upcoming deadlines.
+                </div>
+            </div>
+        </div>
+
+        <!-- Level 2: Work -->
+        <div class="level">
+            <div class="node process">
+                <div class="step-num">02</div>
+                <i>Step Two</i>
+                <h3>Manage Records</h3>
+                <p>Quickly find, view, and update student information.</p>
+                <div class="details">
+                    • <b>Smart Search</b>: Find any student in seconds.<br>
+                    • <b>Simple Forms</b>: Updating details is fast and easy.<br>
+                    • <b>Profiles</b>: Everything you need in one place.
+                </div>
+            </div>
+            <div class="node process">
+                <div class="step-num">03</div>
+                <i>Step Three</i>
+                <h3>Keep Documents</h3>
+                <p>Organize photos, passports, and academic files effortlessly.</p>
+                <div class="details">
+                    • <b>Easy Upload</b>: Attach photos and files directly.<br>
+                    • <b>Stay Organized</b>: Files are automatically sorted.<br>
+                    • <b>Checklist</b>: See which documents are still needed.
+                </div>
+            </div>
+        </div>
+
+        <!-- Level 3: Save -->
+        <div class="level">
+            <div class="node data">
+                <div class="step-num">04</div>
+                <i>Step Four</i>
+                <h3>Safe & Secure</h3>
+                <p>Your work is automatically saved and backed up every day.</p>
+                <div class="details">
+                    • <b>Peace of Mind</b>: Data is stored with maximum security.<br>
+                    • <b>Automatic Backup</b>: Copies are made without you lifting a finger.<br>
+                    • <b>Data Safety</b>: Ensures records are never lost.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="summary-section">
+        <h2>The 5-Step System Process</h2>
+        <div class="journey">
+            <div class="journey-step">
+                <div class="icon-box">1</div>
+                <h4>Authorize</h4>
+                <p>Admin logs in securely to access sensitive data.</p>
+            </div>
+            <div class="journey-step">
+                <div class="icon-box">2</div>
+                <h4>Monitor</h4>
+                <p>Dashboard shows alerts for visa expiries & updates.</p>
+            </div>
+            <div class="journey-step">
+                <div class="icon-box">3</div>
+                <h4>Input</h4>
+                <p>Staff adds or updates student records easily.</p>
+            </div>
+            <div class="journey-step">
+                <div class="icon-box">4</div>
+                <h4>Attach</h4>
+                <p>Documents & photos are linked to each student profile.</p>
+            </div>
+            <div class="journey-step">
+                <div class="icon-box">5</div>
+                <h4>Secure</h4>
+                <p>All data is automatically saved and backed up.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        &copy; 2026 International Student Services | Confidential Client Presentation
+    </div>
+
+    <script>
+        // Simple script to draw connectors dynamically if needed
+        function drawConnectors() {
+            const canvas = document.getElementById('svg-canvas');
+            canvas.innerHTML = ''; // Clear
+            
+            const nodes = document.querySelectorAll('.node');
+            const containerRect = document.querySelector('.flow-container').getBoundingClientRect();
+
+            // Connect Level 1 (Getting Started) to Level 2 (Manage Records & Keep Documents)
+            connect(nodes[0], nodes[1]);
+            connect(nodes[0], nodes[2]);
+            
+            // Connect Level 2 to Level 3 (Safe & Secure)
+            connect(nodes[1], nodes[3]);
+            connect(nodes[2], nodes[3]);
+
+            function connect(startNode, endNode) {
+                const start = startNode.getBoundingClientRect();
+                const end = endNode.getBoundingClientRect();
+
+                const x1 = (start.left + start.right) / 2 - containerRect.left;
+                const y1 = start.bottom - containerRect.top;
+                const x2 = (end.left + end.right) / 2 - containerRect.left;
+                const y2 = end.top - containerRect.top;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('class', 'connector');
+                
+                // Draw a smooth Bezier curve
+                const ctrlY = y1 + (y2 - y1) / 2;
+                const d = `M ${x1} ${y1} C ${x1} ${ctrlY}, ${x2} ${ctrlY}, ${x2} ${y2}`;
+                
+                path.setAttribute('d', d);
+                canvas.appendChild(path);
+            }
+        }
+
+        window.addEventListener('resize', drawConnectors);
+        window.addEventListener('load', drawConnectors);
+        
+        // Add some "reveal" animation delay to levels
+        document.querySelectorAll('.level').forEach((el, i) => {
+            el.style.animation = `fadeInUp 0.6s ease-out ${i * 0.2}s both`;
+        });
+    </script>
+</body>
+</html>

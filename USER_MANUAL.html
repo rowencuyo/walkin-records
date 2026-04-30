@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Manual - International Student Services</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --bg-main: #f9fafb;
+            --bg-sidebar: #ffffff;
+            --border-color: #e5e7eb;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --border-radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            background-color: var(--bg-main);
+            line-height: 1.6;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 280px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 2rem 1.5rem;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.02);
+        }
+
+        .sidebar h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            line-height: 1.3;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.95rem;
+            display: block;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius);
+            transition: all 0.2s ease;
+        }
+
+        .sidebar a:hover {
+            background-color: #eff6ff;
+            color: var(--primary-color);
+        }
+
+        /* Main Content Area */
+        .main-content {
+            margin-left: 280px;
+            padding: 3rem 4rem;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .header {
+            margin-bottom: 3rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1.5rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 4rem;
+            background: #ffffff;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02), 0 1px 3px rgba(0,0,0,0.03);
+            border: 1px solid var(--border-color);
+        }
+
+        h2.section-title {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            margin: 2rem 0 1rem;
+            color: #111827;
+        }
+
+        p {
+            margin-bottom: 1rem;
+        }
+
+        ul, ol {
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Callouts / Notes */
+        .note {
+            background-color: #eff6ff;
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            margin: 1.5rem 0;
+        }
+
+        .note strong {
+            color: var(--primary-color);
+        }
+
+        .warning {
+            background-color: #fef2f2;
+            border-left: 4px solid var(--accent-red);
+            padding: 1rem 1.5rem;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            margin: 1.5rem 0;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        th, td {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .status-green { background: #dcfce7; color: #166534; }
+        .status-amber { background: #fef3c7; color: #92400e; }
+        .status-red { background: #fee2e2; color: #991b1b; }
+
+        kbd {
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.9em;
+            font-family: inherit;
+            color: #334155;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <h2>ISS Manual</h2>
+        <ul>
+            <li><a href="#getting-started">1. Getting Started</a></li>
+            <li><a href="#dashboard">2. The Dashboard</a></li>
+            <li><a href="#managing-records">3. Managing Records</a></li>
+            <li><a href="#record-form">4. Add & Edit Records</a></li>
+            <li><a href="#student-profile">5. Student Profiles</a></li>
+            <li><a href="#notifications">6. Notifications</a></li>
+            <li><a href="#settings">7. System Settings</a></li>
+            <li><a href="#quick-reference">8. Quick Reference</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <header class="header">
+            <h1>International Student Services</h1>
+            <p>Comprehensive Step-by-Step User Manual</p>
+        </header>
+
+        <section id="getting-started">
+            <h2 class="section-title">1. Getting Started</h2>
+            
+            <h3>Logging In</h3>
+            <p>When you open the application, you will be greeted by the secure login screen. To access the system:</p>
+            <ol>
+                <li>Enter your registered <strong>Username</strong>.</li>
+                <li>Enter your <strong>Password</strong>.</li>
+                <li>Click <strong>Login</strong> or press <kbd>Enter</kbd>.</li>
+            </ol>
+            
+            <div class="note">
+                <strong>📝 First-Time Users:</strong> The default administrator credentials are set during the initial installation. Please contact your IT administrator if you do not have your login details.
+            </div>
+
+            <h3>Security Lock Screen</h3>
+            <p>To protect sensitive student data, the application features an automatic lock mechanism. If you leave the application idle for a specific duration (configurable in Settings), it will temporarily lock the screen.</p>
+            <ul>
+                <li>To resume work, simply type your <strong>password</strong>. You do not need to re-enter your username.</li>
+                <li>You can adjust the idle timeout or disable the auto-lock entirely in the <strong>Settings</strong> panel.</li>
+            </ul>
+        </section>
+
+        <section id="dashboard">
+            <h2 class="section-title">2. The Dashboard</h2>
+            <p>The Dashboard is your control center. It provides an immediate, high-level overview of the most critical information requiring your attention.</p>
+
+            <h3>Key Metrics Cards</h3>
+            <p>At the top of the dashboard, you will find six colored metric cards. <strong>Clicking any of these cards</strong> will instantly take you to the Records list, pre-filtered to show exactly those students.</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric Card</th>
+                        <th>Description & Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Active Records</strong></td>
+                        <td>The total number of currently enrolled or active students in the system.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Inactive Records</strong></td>
+                        <td>Students who have graduated, withdrawn, or had their records archived.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Missing Documents</strong></td>
+                        <td>Students whose profiles are incomplete (e.g., missing passports or visas).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Expired Visas</strong></td>
+                        <td>Students currently holding a visa that has already passed its validity date.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Expiring Soon</strong></td>
+                        <td>Visas that are getting close to their expiration (default warning is 30 days).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Not Updated (90d)</strong></td>
+                        <td>Records that have not been modified or reviewed in the last 3 months.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>System Alerts & Notifications</h3>
+            <p>Below the cards, the <strong>Alerts</strong> panel lists the top 5 most urgent notifications (such as visas expiring tomorrow). Click the <strong>Open</strong> button next to an alert to jump directly to the affected student's profile.</p>
+
+            <h3>Visual Trends & Activity</h3>
+            <ul>
+                <li><strong>Record Trends:</strong> A line chart visualizing how many new records were added over the last 6 months. This helps identify enrollment spikes.</li>
+                <li><strong>Recent Activity:</strong> A quick-access list of the last 10 records you interacted with. Perfect for jumping right back into where you left off.</li>
+            </ul>
+        </section>
+
+        <section id="managing-records">
+            <h2 class="section-title">3. Managing Records</h2>
+            <p>The Records page is where you will spend most of your time browsing, filtering, and organizing student data.</p>
+
+            <h3>Viewing Modes</h3>
+            <p>You can toggle how student data is displayed using the view buttons at the top right:</p>
+            <ul>
+                <li><strong>Cards View (Default):</strong> Displays modern, visual cards for each student, highlighting their photo, passport number, and visa status.</li>
+                <li><strong>Table View:</strong> A dense, spreadsheet-style list. Ideal for power users who want to see maximum data on screen and sort by specific columns.</li>
+            </ul>
+
+            <h3>Searching & Precision Filtering</h3>
+            <p>Quickly locate any student using the top toolbar:</p>
+            <ol>
+                <li><strong>Global Search:</strong> Type a name, passport number, or country into the search bar. The results will update instantly as you type.</li>
+                <li><strong>Filters dropdowns:</strong> Narrow down your list by selecting specific criteria such as <em>Visa Status</em>, <em>Educational Level</em>, <em>Year Level</em>, or <em>Active/Archived state</em>.</li>
+            </ol>
+
+            <h3>Opening & Interacting with Records</h3>
+            <ul>
+                <li><strong>Single Click:</strong> Opens a sliding "Preview Panel" on the right side of the screen, allowing you to peek at the details without leaving your list.</li>
+                <li><strong>Double Click:</strong> Opens the full, comprehensive Student Profile view.</li>
+            </ul>
+
+            <h3>Batch Updating (Table View Only)</h3>
+            <p>Need to update the status of an entire class at once? Use the Batch Update tool:</p>
+            <ol>
+                <li>Switch to the <strong>Table View</strong>.</li>
+                <li>Hold <kbd>Ctrl</kbd> (or <kbd>Shift</kbd> for a range) and click multiple rows to select them.</li>
+                <li>A blue action toolbar will slide up from the bottom of the screen.</li>
+                <li>Select the new <strong>Enrollment Status</strong> from the dropdown menu.</li>
+                <li>Click <strong>Apply</strong>. All selected students will be updated simultaneously!</li>
+            </ol>
+        </section>
+
+        <section id="record-form">
+            <h2 class="section-title">4. Adding & Editing Records</h2>
+            <p>Whether you are creating a new student record (by clicking <strong>+ Add Record</strong>) or editing an existing one, the application uses a unified, structured form.</p>
+
+            <h3>Form Organization</h3>
+            <p>To prevent information overload, the form is divided into logical categories:</p>
+            <ul>
+                <li><strong>Identity:</strong> Core metrics like Name, Sex, Date of Birth, Passport Number, and Country of Citizenship.</li>
+                <li><strong>Philippine Residential Address:</strong> The student's local geographic details.</li>
+                <li><strong>Academic & Residency:</strong> Start dates, educational program, academic level, and remarks.</li>
+                <li><strong>Visa Information:</strong> Critical immigration tracking, including Visa Category, Grant Date, and Validity Date.</li>
+            </ul>
+
+            <div class="note">
+                <strong>⚠️ Required Fields:</strong> Fields marked with an asterisk (<strong>*</strong>) must be filled out before you can save. If you miss a required field, the form will highlight it in red when you attempt to save.
+            </div>
+
+            <h3>Intelligent Autosave</h3>
+            <p>Never lose your work due to a power outage or accidental click.</p>
+            <ul>
+                <li>The form automatically saves an internal draft every <strong>30 seconds</strong> as you type.</li>
+                <li>If the application closes unexpectedly, the next time you try to edit or add a record, a prompt will ask if you want to <strong>Restore your Draft</strong> or <strong>Discard it</strong>.</li>
+                <li>If you try to manually leave the page without saving, the system will actively block you and ask if you want to Save, Discard, or Cancel your navigation.</li>
+            </ul>
+        </section>
+
+        <section id="student-profile">
+            <h2 class="section-title">5. Student Profiles</h2>
+            <p>The Student Profile is the central hub for a single individual. It contains all their text data, attached documents, and operational controls.</p>
+
+            <h3>Visual Indicators</h3>
+            <ul>
+                <li><strong>Profile Picture:</strong> Click the generic avatar to upload a photo of the student. Supported formats include JPG, PNG, and WebP (up to 5 MB). You can also click to remove or change the photo later.</li>
+                <li><strong>Completeness Banner:</strong> If the student's profile is missing required data or mandatory documents, a bright orange banner sits at the top outlining exactly what is missing.</li>
+                <li><strong>Visa Countdown Badge:</strong> Immediately know the student's legal status:
+                    <br><br>
+                    <span class="status-badge status-green">🟢 Green</span> More than 30 days remaining on their visa.<br>
+                    <span class="status-badge status-amber">🟡 Amber</span> 30 days or less remaining (Action required soon).<br>
+                    <span class="status-badge status-red">🔴 Red</span> Visa is expired!
+                </li>
+            </ul>
+
+            <h3>Document Management</h3>
+            <p>The system acts as a digital filing cabinet for the student.</p>
+            <ol>
+                <li>Click <strong>+ Upload Document</strong>.</li>
+                <li>Select the type of document (e.g., Passport, Birth Certificate, Graduation Certificate).</li>
+                <li>Choose the file from your computer (PDFs or Images, up to 25 MB).</li>
+            </ol>
+            <p><em>Missing Files:</em> If a linked document is moved or deleted from your actual computer folder outside the application, the app will show a red <strong>!! MISSING FILE</strong> warning. You can click <strong>Locate</strong> to re-link it.</p>
+
+            <h3>Deleting vs. Restoring</h3>
+            <p>Instead of permanently destroying data, deleting a record "Soft Deletes" it. It removes the student from active lists, but they can be fully recovered later by navigating to their profile (via the Inactive Records filter) and clicking <strong>Restore</strong>.</p>
+        </section>
+
+        <section id="notifications">
+            <h2 class="section-title">6. Notifications & Alerts</h2>
+            <p>The system automatically tracks expiring visas and unresolved missing documents, generating notifications so nothing slips through the cracks.</p>
+
+            <p>The Notifications center is split into three tabs:</p>
+            <ul>
+                <li><strong>Active:</strong> Alerts that currently require your attention. You can mark them as read to stop them from flashing, or click <strong>Open</strong> to view the student.</li>
+                <li><strong>Dismissed:</strong> Alerts you have manually hidden by clicking "Dismiss". Use this for alerts you intend to ignore.</li>
+                <li><strong>History:</strong> The system automatically resolves alerts when the underlying issue is fixed (e.g., if you update a student's visa expiry date to next year, the "Visa Expiring" alert automatically moves to History).</li>
+            </ul>
+        </section>
+
+        <section id="settings">
+            <h2 class="section-title">7. System Settings</h2>
+            <p>Customize the application's behavior to match your workflow using the Settings page.</p>
+
+            <h3>Security</h3>
+            <ul>
+                <li><strong>Idle Auto-Lock:</strong> Enable or disable the lock screen and choose the timeout delay (5 to 60 minutes).</li>
+                <li><strong>Change Credentials:</strong> Update your username or password securely.</li>
+            </ul>
+
+            <h3>Notification Preferences</h3>
+            <ul>
+                <li>Toggle individual alert types on/off (Visa Expiry, Missing Docs, Backup Reminders).</li>
+                <li>Change the <strong>Warning Threshold</strong> (e.g., get alerted 60 days before a visa expires instead of 30 days).</li>
+            </ul>
+
+            <h3>Data & Export</h3>
+            <p>To generate comprehensive physical reports, use the Export tool. Select a date range, and the application will generate a formatted Excel spreadsheet (<code>.xlsx</code>) containing all student data within that timeframe.</p>
+
+            <div class="warning">
+                <strong>Data Safety - Backups & Restore</strong><br>
+                Under the <em>Backup & Restore</em> tab, you can generate a complete snapshot of your database and documents. It is highly recommended to <strong>Create a Backup</strong> weekly to a USB drive or secure server.<br><br>
+                <em>Note: Using the <strong>Restore</strong> function will permanently overwrite your current system data with the backup file you select. Use with caution.</em>
+            </div>
+
+            <h3>Audit Log</h3>
+            <p>For compliance and security, the system records every major action taken (logins, record modifications, exports, deletions). Click <strong>View System Audit Logs</strong> to browse this immutable history.</p>
+        </section>
+
+        <section id="quick-reference">
+            <h2 class="section-title">8. Quick Reference Guide</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Goal / Action</th>
+                        <th>Navigation Path</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Add a new student</strong></td>
+                        <td>Go to <em>Records</em> → Click <strong>+ Add Record</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Search for a specific passport</strong></td>
+                        <td>Go to <em>Records</em> → Use the top <strong>Search Bar</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Upload a Birth Certificate</strong></td>
+                        <td>Open the <em>Student Profile</em> → Go to <em>Documents</em> tab → Click <strong>+ Upload Document</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Generate an Excel Report</strong></td>
+                        <td>Go to <em>Settings</em> → <em>Data & Export</em> → Click <strong>Export Records</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Make a safe copy of the database</strong></td>
+                        <td>Go to <em>Settings</em> → <em>Backup & Restore</em> → Click <strong>Create Backup</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Change your Admin password</strong></td>
+                        <td>Go to <em>Settings</em> → <em>Security</em> → Click <strong>Change Password</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+    </main>
+</body>
+</html>

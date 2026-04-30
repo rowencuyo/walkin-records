@@ -29,10 +29,10 @@ class Semester(str, Enum):
     SUMMER = "Summer"
 
 
-class EnrollmentStatus(str, Enum):
-    ENROLLED = "Enrolled"
-    DROPPED = "Dropped"
-    GRADUATED = "Graduated"
+# Enrollment status values — used by the record form, batch-update, and filters.
+# This is the canonical list; do not create a separate enum for these values.
+# (A 3-value EnrollmentStatus enum was removed here — it was out of sync with
+#  the 6-value ENROLLMENT_STATUSES list defined at the bottom of this file.)
 
 
 SUFFIX_NAMES = ["", "Jr.", "Sr.", "II", "III", "IV", "V"]
@@ -68,13 +68,22 @@ class DocumentType(str, Enum):
 
 # Visa categories commonly used
 VISA_CATEGORIES = [
-    "9(a) - Temporary Visitor",
-    "9(d) - Treaty Trader / Investor",
-    "9(f) - Student Visa",
-    "9(g) - Pre-arranged Employment",
-    "47(a)(2) - Special Non-Immigrant",
+    "9a",
+    "9b",
+    "9c",
+    "9d",
+    "9e",
+    "9f",
+    "9g",
+    "13a",
+    "13c - Natural Born Permanent Resident Visa",
+    "13g",
+    "SRRV",
+    "SIRV",
+    "SVEG",
+    "47a (PEZA)",
+    "47b (Refugee)",
     "EO 324 - Foreign Students",
-    "RA 7919 - SIRV",
     "RA 9225 - Dual Citizenship",
     "SSP - Special Study Permit",
     "SWP - Special Work Permit",
@@ -164,3 +173,13 @@ DEFAULT_PREFERENCES = {
 }
 
 AUTO_LOCK_TIMEOUT_OPTIONS = [5, 10, 15, 30, 60]  # minutes
+
+# ── Enrollment statuses for batch operations ──
+ENROLLMENT_STATUSES = [
+    "Enrolled",
+    "Pre-enrolled",
+    "Pending",
+    "Withdrawn",
+    "Graduated",
+    "On Leave",
+]

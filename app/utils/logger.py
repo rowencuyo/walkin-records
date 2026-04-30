@@ -5,6 +5,7 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from app.utils.paths import get_data_dir
 
 _initialized = False
 
@@ -15,7 +16,7 @@ def setup_logging():
     if _initialized:
         return
 
-    log_dir = Path(__file__).resolve().parent.parent.parent / "data" / "logs"
+    log_dir = get_data_dir() / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "app.log"
 

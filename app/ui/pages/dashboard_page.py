@@ -66,6 +66,7 @@ class DashboardPage(QWidget):
 
         self._render_summary()
         self._render_alerts()
+        self._render_trends()
         self._render_recent()
         self._content_layout.addStretch()
 
@@ -86,12 +87,19 @@ class DashboardPage(QWidget):
         threshold = self._prefs.get_int("visa_expiry_threshold_days", 30)
         expiring = self._dashboard.get_expiring_visas_count(days=threshold)
 
+        stale_count = 0
+        try:
+            stale_count = len(self._dashboard.get_stale_records(days_threshold=90))
+        except Exception:
+            pass
+
         metrics = [
             (str(summary["active"]), "Active Records", "active", Colors.ACCENT),
             (str(summary["inactive"]), "Inactive Records", "inactive", Colors.TEXT_SECONDARY),
             (str(missing), "Missing Documents", "missing_docs", Colors.WARNING),
             (str(expired), "Expired Visas", "expired_visa", Colors.DANGER),
             (str(expiring), f"Expiring ({threshold}d)", "expiring_visa", Colors.WARNING),
+            (str(stale_count), "Not Updated (90d)", "active", "#6B7280"),
         ]
 
         for i, (value, label, filter_key, color) in enumerate(metrics):
@@ -144,7 +152,7 @@ class DashboardPage(QWidget):
         )
         card_layout.addWidget(desc_label)
 
-        card.clicked.connect(lambda: self.filter_requested.emit(filter_key))
+        card.clicked.connect(lambda checked, fk=filter_key: self.filter_requested.emit(fk))
         return card
 
     def _render_alerts(self):
@@ -221,10 +229,116 @@ class DashboardPage(QWidget):
             open_btn = QPushButton("Open", row)
             open_btn.setFixedHeight(32)
             open_btn.setMinimumWidth(60)
-            open_btn.clicked.connect(lambda: self.record_selected.emit(notif.record_id))
+            open_btn.clicked.connect(lambda checked, rid=notif.record_id: self.record_selected.emit(rid))
             layout.addWidget(open_btn)
 
         return row
+
+    def _render_trends(self):
+        """Record Trends line chart (6 months)."""
+        MONTH_NAMES = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ]
+
+        def fmt_label(ym: str) -> str:
+            """Convert 'YYYY-MM' to compact 'Mon \'YY', e.g. '2024-09' -> "Sep '24"."""
+            try:
+                year, month = ym.split("-")
+                return f"{MONTH_NAMES[int(month) - 1]} '{year[2:]}"
+            except Exception:
+                return ym
+
+        section = QLabel("Record Trends  -  Last 6 Months", self._content)
+        section.setStyleSheet(
+            f"font-size: 16px; font-weight: 600; color: {Colors.TEXT_PRIMARY};"
+        )
+        self._content_layout.addWidget(section)
+
+        try:
+            trend_data = self._dashboard.get_enrollment_trends(months_back=6)
+        except Exception as e:
+            logger.warning("Could not load trend data: %s", e)
+            return
+        labels = trend_data["labels"]
+        values = trend_data["values"]
+        friendly_labels = [fmt_label(lbl) for lbl in labels]
+
+        try:
+            from PySide6.QtCharts import (
+                QChart, QChartView, QLineSeries, QCategoryAxis, QValueAxis,
+            )
+            from PySide6.QtCore import QMargins, QPointF
+            from PySide6.QtGui import QPainter, QFont, QPen, QColor as QC
+
+            # Build line series — clean, no clutter
+            series = QLineSeries()
+            series.setName("Records")
+            pen = QPen(QC(Colors.ACCENT))
+            pen.setWidth(2)
+            series.setPen(pen)
+            series.setPointsVisible(True)
+            series.setPointLabelsVisible(False)   # no labels on points
+
+            for i, v in enumerate(values):
+                series.append(QPointF(i, v))
+
+            chart = QChart()
+            chart.addSeries(series)
+            chart.setTitle("")
+            chart.setAnimationOptions(QChart.SeriesAnimations)
+            chart.legend().setVisible(False)
+            chart.setBackgroundRoundness(0)
+            chart.setBackgroundVisible(False)     # card container provides the bg
+            chart.setPlotAreaBackgroundVisible(False)
+            chart.setMargins(QMargins(0, 0, 16, 0))
+
+            # X axis  — category labels (month names)
+            axis_x = QCategoryAxis()
+            axis_x.setStartValue(0)
+            for i, lbl in enumerate(friendly_labels):
+                axis_x.append(lbl, i)
+            x_font = QFont()
+            x_font.setPointSize(9)
+            axis_x.setLabelsFont(x_font)
+            axis_x.setLabelsAngle(-15)
+            chart.addAxis(axis_x, Qt.AlignBottom)
+            series.attachAxis(axis_x)
+
+            # Y axis
+            axis_y = QValueAxis()
+            axis_y.setLabelFormat("%d")
+            axis_y.setTickCount(5)
+            max_val = max(values) if values else 1
+            axis_y.setRange(0, max(max_val + 2, 5))
+            y_font = QFont()
+            y_font.setPointSize(9)
+            axis_y.setLabelsFont(y_font)
+            chart.addAxis(axis_y, Qt.AlignLeft)
+            series.attachAxis(axis_y)
+
+            chart_view = QChartView(chart, self._content)
+            chart_view.setRenderHint(QPainter.Antialiasing)
+            chart_view.setFixedHeight(240)
+            chart_view.setStyleSheet(
+                f"background: {Colors.BG_CARD}; border-radius: 10px;"
+                "border: 1px solid #E5E7EB;"
+            )
+            self._content_layout.addWidget(chart_view)
+
+        except ImportError:
+            fallback = QLabel(
+                "  |  ".join(
+                    f"{lbl}: {v} walk-in{'s' if v != 1 else ''}"
+                    for lbl, v in zip(friendly_labels, values)
+                ),
+                self._content,
+            )
+            fallback.setWordWrap(True)
+            fallback.setStyleSheet(
+                f"color: {Colors.TEXT_SECONDARY}; font-size: 13px; padding: 12px 0;"
+            )
+            self._content_layout.addWidget(fallback)
 
     def _render_recent(self):
         """Recent Activity panel."""

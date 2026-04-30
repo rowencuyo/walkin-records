@@ -202,3 +202,4 @@ class Workspace(QWidget):
         self.navigate_to("records")
         self._record_list.apply_filter(filter_type)
         self.navigate_requested.emit("records")
+

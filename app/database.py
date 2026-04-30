@@ -2,15 +2,17 @@
 SQLite database connection and schema management.
 """
 import os
+import sys
 import sqlite3
 from pathlib import Path
 from app.utils.logger import get_logger
+from app.utils.paths import get_data_dir
 
 logger = get_logger(__name__)
 
-# Resolve data directory relative to this file's parent (project root)
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = _PROJECT_ROOT / "data"
+# Resolve data directory safely using our helper
+DATA_DIR = get_data_dir()
+
 DB_PATH = DATA_DIR / "walkin_records.db"
 DOCUMENTS_DIR = DATA_DIR / "documents"
 PROFILE_PICS_DIR = DATA_DIR / "profile_pictures"

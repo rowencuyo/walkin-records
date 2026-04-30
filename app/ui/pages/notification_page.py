@@ -4,7 +4,7 @@ Notification list page — grouped, severity-ordered, with lifecycle actions.
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QFrame, QTabBar, QStackedWidget,
+    QScrollArea, QFrame, QTabBar,
 )
 
 from app.services.notification_service import NotificationService
@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 
 
 class NotificationPage(QWidget):
-    """Notification list with tabs: Active, Dismissed, History."""
+    """Notification list with tabs: Active, Dismissed."""
 
     record_selected = Signal(int)
     badge_changed = Signal()  # emitted when notification state changes
@@ -48,7 +48,6 @@ class NotificationPage(QWidget):
         self._tabs = QTabBar(self)
         self._tabs.addTab("Active")
         self._tabs.addTab("Dismissed")
-        self._tabs.addTab("History")
         self._tabs.currentChanged.connect(self._on_tab_changed)
         outer.addWidget(self._tabs)
 
@@ -78,10 +77,8 @@ class NotificationPage(QWidget):
 
         if index == 0:
             notifications = self._service.get_active_notifications(limit=50)
-        elif index == 1:
-            notifications = self._service.get_notifications(status_filter="dismissed", limit=50)
         else:
-            notifications = self._service.get_notifications(status_filter="resolved", limit=50)
+            notifications = self._service.get_notifications(status_filter="dismissed", limit=50)
 
         if not notifications:
             empty = QLabel("No notifications" if index == 0 else "No items", self._list_widget)
@@ -141,7 +138,7 @@ class NotificationPage(QWidget):
         msg.setWordWrap(True)
         info.addWidget(msg)
 
-        ts = QLabel(notif.created_at[:16] if notif.created_at else "", row)
+        ts = QLabel((notif.created_at or "")[:16], row)
         ts.setStyleSheet(f"color: {Colors.TEXT_TERTIARY}; font-size: 11px;")
         info.addWidget(ts)
 
@@ -153,7 +150,7 @@ class NotificationPage(QWidget):
                 open_btn = QPushButton("Open", row)
                 open_btn.setFixedHeight(32)
                 open_btn.setMinimumWidth(55)
-                open_btn.clicked.connect(lambda: self.record_selected.emit(notif.record_id))
+                open_btn.clicked.connect(lambda checked, rid=notif.record_id: self.record_selected.emit(rid))
                 layout.addWidget(open_btn)
 
             dismiss_btn = QPushButton("Dismiss", row)

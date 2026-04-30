@@ -8,9 +8,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableView, QHeaderView,
     QPushButton, QLabel, QComboBox, QAbstractItemView, QScrollArea,
     QGridLayout, QFrame, QSpacerItem, QSizePolicy, QStackedWidget,
+    QMessageBox,
 )
 
-from app.constants import DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS
+from app.constants import DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, ENROLLMENT_STATUSES
 from app.models import WalkInRecord
 from app.services.record_service import RecordService
 from app.services.image_service import ImageService
@@ -138,10 +139,12 @@ class RecordCard(QFrame):
         layout.addWidget(div)
 
         # Details
+        visa = record.visa_category or ""
+        course = record.course_program or ""
         details = [
-            ("Visa", record.visa_category[:25] + "..." if len(record.visa_category) > 25 else record.visa_category),
+            ("Visa", visa[:25] + "..." if len(visa) > 25 else visa),
             ("Status", record.visa_status),
-            ("Course", record.course_program[:20] + "..." if len(record.course_program) > 20 else record.course_program),
+            ("Course", course[:20] + "..." if len(course) > 20 else course),
             ("Year", record.year_level),
         ]
         for label_text, value in details:
@@ -265,10 +268,11 @@ class RecordListPage(QWidget):
         self._proxy_model.setSourceModel(self._table_model)
 
         self._table_view = QTableView()
+        self._table_view.setFocusPolicy(Qt.NoFocus)
         self._table_view.setModel(self._proxy_model)
         self._table_view.setAlternatingRowColors(True)
         self._table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._table_view.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._table_view.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._table_view.setSortingEnabled(True)
         self._table_view.verticalHeader().setVisible(False)
         self._table_view.setShowGrid(False)
@@ -277,6 +281,9 @@ class RecordListPage(QWidget):
         self._table_view.horizontalHeader().setDefaultSectionSize(140)
         self._table_view.horizontalHeader().setMinimumSectionSize(80)
         self._table_view.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        # A5 — 40px rows match macOS system table proportions
+        self._table_view.verticalHeader().setDefaultSectionSize(40)
+        self._table_view.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self._table_view.clicked.connect(self._on_table_clicked)
         self._table_view.doubleClicked.connect(self._on_table_double_click)
 
@@ -284,7 +291,20 @@ class RecordListPage(QWidget):
         self._table_view.horizontalHeader().resizeSection(0, 100)
         self._table_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
 
+        # A2 — empty-state overlay (shown when 0 rows match)
+        self._empty_label = QLabel("No records found.\nTry adjusting your search or filter.", self._table_view)
+        self._empty_label.setAlignment(Qt.AlignCenter)
+        self._empty_label.setStyleSheet(
+            f"color: #9CA3AF; font-size: 15px; padding: 32px;"
+        )
+        self._empty_label.setVisible(False)
+
         self._view_stack.addWidget(self._table_view)
+
+        # Connect selection model so batch toolbar can react
+        self._table_view.selectionModel().selectionChanged.connect(
+            self._on_selection_changed
+        )
 
         # --- Card View ---
         self._card_scroll = QScrollArea()
@@ -334,6 +354,88 @@ class RecordListPage(QWidget):
 
         layout.addWidget(self._view_stack, stretch=1)
 
+        # ── Batch Action Toolbar (hidden until 2+ rows selected) ──
+        self._batch_toolbar = QFrame(self)
+        self._batch_toolbar.setObjectName("batchToolbar")
+        self._batch_toolbar.setStyleSheet(
+            f"""#batchToolbar {{
+                background-color: {Colors.ACCENT};
+                border-radius: 8px;
+                padding: 2px 6px;
+            }}"""
+        )
+        self._batch_toolbar.setVisible(False)
+        batch_layout = QHBoxLayout(self._batch_toolbar)
+        batch_layout.setContentsMargins(12, 6, 12, 6)
+        batch_layout.setSpacing(10)
+
+        self._batch_count_label = QLabel("", self._batch_toolbar)
+        self._batch_count_label.setStyleSheet("color: white; font-size: 13px; font-weight: 600;")
+        batch_layout.addWidget(self._batch_count_label)
+
+        batch_layout.addStretch()
+
+        # ── Archive / Restore button ──
+        self._batch_archive_btn = QPushButton("Archive", self._batch_toolbar)
+        self._batch_archive_btn.setFixedHeight(28)
+        self._batch_archive_btn.setStyleSheet(
+            "background: #DC2626; color: white; font-weight: 600;"
+            "border-radius: 4px; padding: 0 12px; border: none;"
+        )
+        self._batch_archive_btn.setToolTip("Archive selected records (deactivate)")
+        self._batch_archive_btn.clicked.connect(self._batch_archive)
+        batch_layout.addWidget(self._batch_archive_btn)
+
+        self._batch_restore_btn = QPushButton("Restore", self._batch_toolbar)
+        self._batch_restore_btn.setFixedHeight(28)
+        self._batch_restore_btn.setStyleSheet(
+            "background: #10B981; color: white; font-weight: 600;"
+            "border-radius: 4px; padding: 0 12px; border: none;"
+        )
+        self._batch_restore_btn.setToolTip("Restore selected archived records")
+        self._batch_restore_btn.clicked.connect(self._batch_restore)
+        batch_layout.addWidget(self._batch_restore_btn)
+
+        # Separator
+        self._batch_separator = QFrame(self._batch_toolbar)
+        self._batch_separator.setFixedWidth(1)
+        self._batch_separator.setFixedHeight(20)
+        self._batch_separator.setStyleSheet("background-color: rgba(255,255,255,0.3);")
+        batch_layout.addWidget(self._batch_separator)
+
+        # ── Enrollment status update ──
+        self._batch_status_label = QLabel("Set status:", self._batch_toolbar)
+        self._batch_status_label.setStyleSheet("color: white; font-size: 13px;")
+        batch_layout.addWidget(self._batch_status_label)
+
+        self._batch_status_combo = QComboBox(self._batch_toolbar)
+        self._batch_status_combo.setFixedHeight(28)
+        from app.constants import ENROLLMENT_STATUSES
+        for s in ENROLLMENT_STATUSES:
+            self._batch_status_combo.addItem(s)
+        batch_layout.addWidget(self._batch_status_combo)
+
+        self._batch_apply_btn = QPushButton("Apply", self._batch_toolbar)
+        self._batch_apply_btn.setFixedHeight(28)
+        self._batch_apply_btn.setStyleSheet(
+            "background: white; color: #4F8EF7; font-weight: 600;"
+            "border-radius: 4px; padding: 0 12px;"
+        )
+        self._batch_apply_btn.clicked.connect(self._apply_batch_update)
+        batch_layout.addWidget(self._batch_apply_btn)
+
+        cancel_batch_btn = QPushButton("✕", self._batch_toolbar)
+        cancel_batch_btn.setFixedHeight(28)
+        cancel_batch_btn.setFixedWidth(28)
+        cancel_batch_btn.setStyleSheet(
+            "background: rgba(255,255,255,0.2); color: white; border-radius: 4px;"
+        )
+        cancel_batch_btn.setToolTip("Clear selection")
+        cancel_batch_btn.clicked.connect(self._table_view.clearSelection)
+        batch_layout.addWidget(cancel_batch_btn)
+
+        layout.addWidget(self._batch_toolbar)
+
         # Pagination
         pag = QHBoxLayout()
         pag.setSpacing(8)
@@ -376,6 +478,107 @@ class RecordListPage(QWidget):
     def set_read_only(self, enabled: bool):
         """Show or hide the add button based on read-only mode."""
         self._add_btn.setVisible(not enabled)
+        self._read_only = enabled
+
+    # -- Batch Selection --
+
+    def _get_selected_record_ids(self) -> list[int]:
+        """Extract record IDs from current table selection."""
+        selected_rows = self._table_view.selectionModel().selectedRows()
+        record_ids = []
+        for index in selected_rows:
+            source_index = self._proxy_model.mapToSource(index)
+            record = self._table_model.get_record(source_index.row())
+            if record and record.id:
+                record_ids.append(record.id)
+        return record_ids
+
+    def _on_selection_changed(self):
+        """Show/hide the batch toolbar based on how many rows are selected."""
+        selected_rows = self._table_view.selectionModel().selectedRows()
+        count = len(selected_rows)
+        if count > 1:
+            self._batch_count_label.setText(f"{count} records selected")
+            self._batch_toolbar.setVisible(True)
+            # Show context-appropriate buttons
+            viewing_archived = self._active_status == "archived"
+            self._batch_archive_btn.setVisible(not viewing_archived)
+            self._batch_restore_btn.setVisible(viewing_archived)
+            # Hide enrollment status controls when viewing archived
+            self._batch_status_combo.setVisible(not viewing_archived)
+            self._batch_status_label.setVisible(not viewing_archived)
+            self._batch_apply_btn.setVisible(not viewing_archived)
+            self._batch_separator.setVisible(not viewing_archived)
+        else:
+            self._batch_toolbar.setVisible(False)
+
+    def _apply_batch_update(self):
+        """Apply enrollment status to all selected records."""
+        record_ids = self._get_selected_record_ids()
+        if not record_ids:
+            return
+
+        new_status = self._batch_status_combo.currentText()
+        reply = QMessageBox.question(
+            self,
+            "Confirm Batch Update",
+            f"Update enrollment status to '{new_status}' for {len(record_ids)} record(s)?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            self._record_service.batch_update_enrollment_status(record_ids, new_status)
+            self._table_view.clearSelection()
+            self.load_data()
+        except Exception as e:
+            QMessageBox.warning(self, "Batch Update Failed", str(e))
+
+    def _batch_archive(self):
+        """Archive (deactivate) all selected records."""
+        record_ids = self._get_selected_record_ids()
+        if not record_ids:
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Batch Archive",
+            f"Archive {len(record_ids)} record(s)?\n\n"
+            "Archived records can be restored later from the Archived view.",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            count = self._record_service.batch_archive(record_ids)
+            self._table_view.clearSelection()
+            self.load_data()
+        except Exception as e:
+            QMessageBox.warning(self, "Batch Archive Failed", str(e))
+
+    def _batch_restore(self):
+        """Restore all selected archived records."""
+        record_ids = self._get_selected_record_ids()
+        if not record_ids:
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Batch Restore",
+            f"Restore {len(record_ids)} archived record(s)?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            count = self._record_service.batch_restore(record_ids)
+            self._table_view.clearSelection()
+            self.load_data()
+        except Exception as e:
+            QMessageBox.warning(self, "Batch Restore Failed", str(e))
 
     # -- View Toggle --
 
@@ -541,7 +744,7 @@ class RecordListPage(QWidget):
             self.load_data()
 
     def _on_page_size_changed(self):
-        self._page_size = self._page_size_combo.currentData()
+        self._page_size = self._page_size_combo.currentData() or DEFAULT_PAGE_SIZE
         self._current_page = 0
         self.load_data()
 

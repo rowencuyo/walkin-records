@@ -59,8 +59,11 @@ class ProfileView(QWidget):
 
         self._title_label = QLabel("Profile", self)
         self._title_label.setObjectName("pageTitle")
+        # A4 — let title absorb available space so it dominates the header
+        self._title_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         header.addWidget(self._title_label)
         header.addStretch()
+        header.setSpacing(12)
 
         self._edit_btn = QPushButton("Edit", self)
         self._edit_btn.setObjectName("primaryButton")
@@ -122,8 +125,12 @@ class ProfileView(QWidget):
             elif item.layout():
                 self._clear_layout(item.layout())
 
-        # Completeness banner
-        documents = self._document_service.get_documents(self._record_id)
+        # C3 — guard document fetch so a DB error doesn't break the whole view
+        try:
+            documents = self._document_service.get_documents(self._record_id)
+        except Exception as e:
+            logger.warning("Could not load documents for record %d: %s", self._record_id, e)
+            documents = []
         doc_types = [d.document_type for d in documents]
         status, missing_items = check_completeness(self._record, len(documents), doc_types)
         if status != "complete":
@@ -196,14 +203,24 @@ class ProfileView(QWidget):
             ("Remarks", self._record.enrollment_status),
         ]))
 
-        # Visa
-        self._content_layout.addWidget(self._create_info_section("Visa Information", [
-            ("Visa Category", self._record.visa_category),
-            ("Visa Grant Date", self._record.visa_grant_date),
-            ("Visa Validity Date", self._record.visa_validity_date),
-            ("Status", self._record.visa_status),
-            ("Comments", self._record.remarks),
-        ]))
+        # Visa — D1: inject countdown badge next to validity date
+        visa_row = QHBoxLayout()
+        visa_badge = self._make_visa_badge(self._record.visa_validity_date)
+        if visa_badge:
+            visa_row.addWidget(visa_badge)
+        visa_row_widget = QWidget(self)
+        visa_row_widget.setLayout(visa_row)
+        self._content_layout.addWidget(
+            self._create_info_section("Visa Information", [
+                ("Visa Category", self._record.visa_category),
+                ("Visa Grant Date", self._record.visa_grant_date),
+                ("Visa Validity Date", self._record.visa_validity_date),
+                ("Status", self._record.visa_status),
+                ("Comments", self._record.remarks),
+            ])
+        )
+        if visa_badge:
+            self._content_layout.addWidget(visa_row_widget)
 
         # Documents (with file integrity checks)
         self._content_layout.addWidget(
@@ -220,7 +237,44 @@ class ProfileView(QWidget):
 
         self._content_layout.addStretch()
 
+
+    # ── D1: Visa Countdown Badge ──────────────────────────────────────────────
+
+    def _make_visa_badge(self, validity_date: str) -> "QLabel | None":
+        """Return a color-coded days-remaining badge for the visa validity date.
+
+        Returns None if the date is blank or cannot be parsed.
+        Colors: green > 30 days, amber ≤ 30 days, red = already expired.
+        """
+        if not validity_date:
+            return None
+        try:
+            from datetime import date as _date
+            exp = _date.fromisoformat(validity_date)
+            days_left = (exp - _date.today()).days
+        except (ValueError, TypeError):
+            return None
+
+        if days_left < 0:
+            text = f"Visa expired {abs(days_left)} day{'s' if abs(days_left) != 1 else ''} ago"
+            bg = "#FF3B30"
+        elif days_left <= 30:
+            text = f"Visa expires in {days_left} day{'s' if days_left != 1 else ''}"
+            bg = "#FF9500"
+        else:
+            text = f"Visa valid — {days_left} days remaining"
+            bg = "#34C759"
+
+        badge = QLabel(text, self)
+        badge.setStyleSheet(
+            f"background-color: {bg}; color: white; font-weight: 600; font-size: 13px; "
+            f"padding: 6px 14px; border-radius: 6px;"
+        )
+        badge.setAlignment(Qt.AlignCenter)
+        return badge
+
     def _create_info_section(self, title: str, fields: list[tuple[str, str]]) -> QGroupBox:
+
         """Create a read-only info section."""
         group = QGroupBox(title, self)
         layout = QFormLayout()
@@ -287,7 +341,8 @@ class ProfileView(QWidget):
                 info.addWidget(name_lbl)
 
                 if file_exists:
-                    meta = QLabel(f"{doc.file_name} | {doc.file_size / 1024:.1f} KB | {doc.upload_date}", self)
+                    size_kb = (doc.file_size or 0) / 1024
+                    meta = QLabel(f"{doc.file_name} | {size_kb:.1f} KB | {doc.upload_date or ''}", self)
                 else:
                     meta = QLabel(f"{doc.file_name} | MISSING FILE", self)
                     meta.setStyleSheet("color: #FF3B30;")
@@ -353,9 +408,11 @@ class ProfileView(QWidget):
             for d in existing:
                 self._document_service.delete_document(d.id)
 
+        from PySide6.QtCore import QStandardPaths
+        home = QStandardPaths.writableLocation(QStandardPaths.HomeLocation)
         ext_filter = " ".join(f"*{e}" for e in ALLOWED_DOCUMENT_EXTENSIONS)
         path, _ = QFileDialog.getOpenFileName(
-            self, "Select Document", "", f"Documents ({ext_filter})"
+            self, "Select Document", home, f"Documents ({ext_filter})"
         )
         if not path:
             return
@@ -378,8 +435,10 @@ class ProfileView(QWidget):
 
     def _locate_document(self, doc: Document):
         """Let user locate a missing document file."""
+        from PySide6.QtCore import QStandardPaths
+        home = QStandardPaths.writableLocation(QStandardPaths.HomeLocation)
         path, _ = QFileDialog.getOpenFileName(
-            self, f"Locate: {doc.file_name}", "", "All Files (*.*)"
+            self, f"Locate: {doc.file_name}", home, "All Files (*.*)"
         )
         if path:
             if self._document_service.relocate_document(doc.id, path):
@@ -405,8 +464,10 @@ class ProfileView(QWidget):
 
     def _on_upload_picture(self):
         ext_filter = " ".join(f"*{e}" for e in sorted(ALLOWED_IMAGE_EXTENSIONS))
+        from PySide6.QtCore import QStandardPaths
+        home = QStandardPaths.writableLocation(QStandardPaths.HomeLocation)
         path, _ = QFileDialog.getOpenFileName(
-            self, "Select Profile Picture", "",
+            self, "Select Profile Picture", home,
             f"Images ({ext_filter});;All Files (*.*)"
         )
         if not path:

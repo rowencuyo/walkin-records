@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Archivium 1.2")
+        self.setWindowTitle("International Student Services")
         self.setMinimumSize(1100, 700)
         self.resize(1300, 800)
 
@@ -90,6 +90,7 @@ class MainWindow(QMainWindow):
         self._readonly_btn = QPushButton("Read-Only: Off")
         self._readonly_btn.setFixedHeight(24)
         self._readonly_btn.setStyleSheet("font-size: 12px; padding: 2px 8px;")
+        self._readonly_btn.setToolTip("Toggle read-only mode to prevent accidental edits")
         self._readonly_btn.clicked.connect(self._toggle_read_only)
         self._status_bar.addPermanentWidget(self._readonly_btn)
 
@@ -97,6 +98,7 @@ class MainWindow(QMainWindow):
         lock_btn = QPushButton("Lock")
         lock_btn.setFixedHeight(24)
         lock_btn.setStyleSheet("font-size: 12px; padding: 2px 8px;")
+        lock_btn.setToolTip("Lock the session (Ctrl+L)")
         lock_btn.clicked.connect(self._lock_session)
         self._status_bar.addPermanentWidget(lock_btn)
 
@@ -106,6 +108,7 @@ class MainWindow(QMainWindow):
         self._undo_btn.setStyleSheet(
             "font-size: 12px; padding: 2px 8px; color: #4F8EF7; font-weight: 600;"
         )
+        self._undo_btn.setToolTip("Undo the last action")
         self._undo_btn.setVisible(False)
         self._undo_btn.clicked.connect(self._perform_undo)
         self._status_bar.addPermanentWidget(self._undo_btn)
@@ -118,6 +121,14 @@ class MainWindow(QMainWindow):
         # Keyboard shortcut: Ctrl+L to lock
         self._lock_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
         self._lock_shortcut.activated.connect(self._lock_session)
+
+        # Keyboard shortcut: Ctrl+N to add a new record
+        self._new_record_shortcut = QShortcut(QKeySequence("Ctrl+N"), self)
+        self._new_record_shortcut.activated.connect(self._show_add_form)
+
+        # Keyboard shortcut: Ctrl+F to navigate to records (focus search)
+        self._search_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
+        self._search_shortcut.activated.connect(lambda: self._navigate_to("records"))
 
         # Notification scan timer
         self._scan_timer = QTimer()
@@ -156,6 +167,7 @@ class MainWindow(QMainWindow):
         self._toolbar_add_btn = QPushButton("+ Add Record")
         self._toolbar_add_btn.setObjectName("primaryButton")
         self._toolbar_add_btn.setFixedHeight(26)
+        self._toolbar_add_btn.setToolTip("Add a new walk-in record (Ctrl+N)")
         self._toolbar_add_btn.clicked.connect(self._show_add_form)
         self._toolbar_add_btn.setVisible(False)
         self._toolbar.addWidget(self._toolbar_add_btn)
@@ -241,19 +253,10 @@ class MainWindow(QMainWindow):
             self._idle_timer.stop()
 
     def _on_idle_timeout(self):
-        """Show warning before locking."""
+        """Auto-lock the session after idle timeout."""
         if self._locked:
             return
-        reply = QMessageBox.question(
-            self, "Idle Timeout",
-            "You've been idle. The session will be locked.\n\n"
-            "Click 'No' to stay active, or 'Yes' to lock now.",
-            QMessageBox.Yes | QMessageBox.No,
-        )
-        if reply == QMessageBox.Yes:
-            self._lock_session()
-        else:
-            self._reset_idle_timer()
+        self._lock_session()
 
     def eventFilter(self, obj, event):
         """Reset idle timer on user interaction."""
@@ -429,6 +432,9 @@ class MainWindow(QMainWindow):
         form.deleteLater()
         # Track activity
         self._dashboard_service.record_activity(record_id, "edited")
+        # Mark any unread notifications for this record as read
+        self._notification_service.mark_read_by_record(record_id)
+        self._scan_notifications()
         self._show_profile(record_id)
         self._status_bar.showMessage("Record saved", 3000)
 

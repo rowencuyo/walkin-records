@@ -1,7 +1,8 @@
 """
 Add / Edit record form with full validation, autosave drafts, and unsaved changes guard.
 """
-from PySide6.QtCore import Qt, Signal, QTimer, QDate
+from PySide6.QtCore import Qt, Signal, QTimer, QDate, QEvent
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit,
     QComboBox, QTextEdit, QLabel, QPushButton, QScrollArea,
@@ -11,7 +12,7 @@ from PySide6.QtWidgets import (
 
 from app.constants import (
     Sex, VisaStatus, EducationalLevel, Semester,
-    VISA_CATEGORIES, YEAR_LEVELS, COUNTRIES,
+    VISA_CATEGORIES, YEAR_LEVELS, COUNTRIES, SUFFIX_NAMES, PH_REGIONS,
 )
 from app.models import WalkInRecord
 from app.services.record_service import RecordService
@@ -23,7 +24,155 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 AUTOSAVE_INTERVAL_MS = 30_000  # 30 seconds
+
+
+class ClearableDateEdit(QDateEdit):
+    """Date field with free-form typing, placeholder, and calendar popup.
+
+    Bypasses QDateEdit's section-by-section editing so the user can
+    simply type a date like '02/10/2004'.  The text is parsed into a
+    real QDate on focus-out.  Backspace / Delete clear the field.
+    The calendar popup dropdown still works normally.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._is_empty = True
+        self.lineEdit().setPlaceholderText("MM/DD/YYYY")
+        self.dateChanged.connect(self._on_date_changed)
+
+    # ── helpers ──
+
+    def _on_date_changed(self):
+        self._is_empty = (self.date() == self.minimumDate())
+        self._sync_placeholder()
+
+    def _set_line_text(self, text, cursor):
+        """Set line-edit text without triggering QDateEdit validation."""
+        le = self.lineEdit()
+        le.blockSignals(True)
+        le.setText(text)
+        le.setCursorPosition(cursor)
+        le.blockSignals(False)
+
+    def _sync_placeholder(self):
+        """Clear line-edit text when empty so the native placeholder shows."""
+        if self._is_empty and not self.hasFocus():
+            self._set_line_text("", 0)
+
+    # ── focus ──
+
+    def focusInEvent(self, event):
+        # Skip QDateEdit's focusInEvent (which selects a section)
+        QWidget.focusInEvent(self, event)
+        if self._is_empty:
+            self._set_line_text("", 0)
+
+    def focusOutEvent(self, event):
+        self._parse_and_apply()
+        super().focusOutEvent(event)
+        self._sync_placeholder()
+
+    # ── keyboard — bypass section editing, type freely ──
+
+    def keyPressEvent(self, event: QKeyEvent):
+        le = self.lineEdit()
+        key = event.key()
+
+        # Backspace
+        if key == Qt.Key_Backspace:
+            if le.hasSelectedText():
+                s = le.selectionStart()
+                e = s + len(le.selectedText())
+                self._set_line_text(le.text()[:s] + le.text()[e:], s)
+            elif le.cursorPosition() > 0:
+                p = le.cursorPosition()
+                self._set_line_text(le.text()[:p-1] + le.text()[p:], p - 1)
+            # If now empty, reset
+            if not le.text().strip():
+                self._is_empty = True
+            return
+
+        # Delete
+        if key == Qt.Key_Delete:
+            if le.hasSelectedText():
+                s = le.selectionStart()
+                e = s + len(le.selectedText())
+                self._set_line_text(le.text()[:s] + le.text()[e:], s)
+            else:
+                p = le.cursorPosition()
+                t = le.text()
+                if p < len(t):
+                    self._set_line_text(t[:p] + t[p+1:], p)
+            if not le.text().strip():
+                self._is_empty = True
+            return
+
+        # Printable characters (digits, slashes, etc.)
+        if event.text() and event.text().isprintable():
+            p = le.cursorPosition()
+            t = le.text()
+            if le.hasSelectedText():
+                s = le.selectionStart()
+                e = s + len(le.selectedText())
+                new = t[:s] + event.text() + t[e:]
+                self._set_line_text(new, s + len(event.text()))
+            else:
+                self._set_line_text(t[:p] + event.text() + t[p:], p + len(event.text()))
+            self._is_empty = False
+            return
+
+        # Navigation keys
+        if key == Qt.Key_Left:
+            le.setCursorPosition(max(0, le.cursorPosition() - 1))
+            return
+        if key == Qt.Key_Right:
+            le.setCursorPosition(min(len(le.text()), le.cursorPosition() + 1))
+            return
+        if key == Qt.Key_Home:
+            le.setCursorPosition(0)
+            return
+        if key == Qt.Key_End:
+            le.setCursorPosition(len(le.text()))
+            return
+
+        # Select-all
+        if key == Qt.Key_A and event.modifiers() & Qt.ControlModifier:
+            le.selectAll()
+            return
+
+        # Everything else (Tab, Escape, etc.) → default QWidget handling
+        QWidget.keyPressEvent(self, event)
+
+    # ── parse typed text into a QDate ──
+
+    def _parse_and_apply(self):
+        """Try to parse the line-edit text as a date and apply it."""
+        text = self.lineEdit().text().strip()
+        if not text:
+            self._is_empty = True
+            self.setDate(self.minimumDate())
+            return
+
+        # Try MM/dd/yyyy first, then common alternatives
+        for fmt in ("MM/dd/yyyy", "M/d/yyyy", "MM-dd-yyyy", "M-d-yyyy"):
+            date = QDate.fromString(text, fmt)
+            if date.isValid() and date > self.minimumDate():
+                self._is_empty = False
+                self.setDate(date)
+                return
+
+        # Invalid text → reset to empty
+        self._is_empty = True
+        self.setDate(self.minimumDate())
+
+    # ── show ──
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        QTimer.singleShot(0, self._sync_placeholder)
 
 
 class RecordForm(QWidget):
@@ -57,8 +206,6 @@ class RecordForm(QWidget):
         self._autosave_timer.timeout.connect(self._autosave_draft)
         self._autosave_timer.start()
 
-        # Stop timer when widget is destroyed
-        self.destroyed.connect(self._autosave_timer.stop)
 
     # ── Draft key ──
 
@@ -176,6 +323,7 @@ class RecordForm(QWidget):
             ("last_name", "Last Name *", "line"),
             ("first_name", "First Name *", "line"),
             ("middle_name", "Middle Name", "line"),
+            ("suffix_name", "Suffix", "combo", SUFFIX_NAMES),
             ("sex", "Sex *", "combo", [s.value for s in Sex]),
             ("date_of_birth", "Date of Birth *", "date"),
             ("passport_number", "Passport Number *", "line"),
@@ -188,6 +336,7 @@ class RecordForm(QWidget):
             ("barangay", "Barangay", "line"),
             ("city_municipality", "City / Municipality", "line"),
             ("province", "Province", "line"),
+            ("region", "Region", "combo", PH_REGIONS),
         ]))
 
         # Section: Academic & Residency
@@ -235,12 +384,11 @@ class RecordForm(QWidget):
                 widget.setFixedHeight(38)
                 widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             elif field_type == "date":
-                widget = QDateEdit(self)
+                widget = ClearableDateEdit(self)
                 widget.setCalendarPopup(True)
                 widget.setDisplayFormat("MM/dd/yyyy")
-                widget.setDate(QDate(2000, 1, 1))
-                widget.setSpecialValueText(" ")  # show blank when at minimum
                 widget.setMinimumDate(QDate(1900, 1, 1))
+                widget.setDate(QDate(1900, 1, 1))  # set to minimum so placeholder shows
                 widget.setFixedHeight(38)
                 widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             elif field_type == "combo":
@@ -295,8 +443,11 @@ class RecordForm(QWidget):
         """Get value from a field widget."""
         widget = self._fields.get(key)
         if isinstance(widget, QDateEdit):
+            # Flush any typed-but-uncommitted text into the QDate value
+            if isinstance(widget, ClearableDateEdit):
+                widget._parse_and_apply()
             # Return empty string if date is at the special minimum value
-            if widget.date() == QDate(2000, 1, 1) or widget.date() == widget.minimumDate():
+            if widget.date() == widget.minimumDate():
                 return ""
             return widget.date().toString("yyyy-MM-dd")
         elif isinstance(widget, QLineEdit):
@@ -322,10 +473,18 @@ class RecordForm(QWidget):
                 date = QDate.fromString(value, "yyyy-MM-dd")
                 if date.isValid():
                     widget.setDate(date)
+                    # Update line-edit text for ClearableDateEdit
+                    if isinstance(widget, ClearableDateEdit):
+                        widget._is_empty = False
+                        widget._set_line_text(date.toString("MM/dd/yyyy"), 0)
                 else:
-                    widget.setDate(QDate(2000, 1, 1))
+                    widget.setDate(widget.minimumDate())
+                    if isinstance(widget, ClearableDateEdit):
+                        widget._is_empty = True
             else:
-                widget.setDate(QDate(2000, 1, 1))
+                widget.setDate(widget.minimumDate())
+                if isinstance(widget, ClearableDateEdit):
+                    widget._is_empty = True
         elif isinstance(widget, QLineEdit):
             widget.setText(value)
         elif isinstance(widget, QComboBox):
@@ -407,6 +566,7 @@ class RecordForm(QWidget):
             last_name=self._get_value("last_name"),
             first_name=self._get_value("first_name"),
             middle_name=self._get_value("middle_name"),
+            suffix_name=self._get_value("suffix_name"),
             sex=self._get_value("sex"),
             date_of_birth=self._get_value("date_of_birth"),
             passport_number=self._get_value("passport_number"),
@@ -415,6 +575,7 @@ class RecordForm(QWidget):
             barangay=self._get_value("barangay"),
             city_municipality=self._get_value("city_municipality"),
             province=self._get_value("province"),
+            region=self._get_value("region"),
             date_of_arrival=self._get_value("date_of_arrival"),
             date_start_education=self._get_value("date_start_education"),
             educational_level=self._get_value("educational_level"),

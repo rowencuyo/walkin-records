@@ -118,6 +118,28 @@ class RecordTableModel(QAbstractTableModel):
                     return QColor("#FF9500")
                 elif status == "no_documents":
                     return QColor("#FF3B30")
+            if col_key == "visa_status":
+                from PySide6.QtGui import QColor
+                vs = (getattr(record, "visa_status", "") or "").lower()
+                if "within" in vs:
+                    return QColor("#34C759")
+                elif "outside" in vs:
+                    return QColor("#FF9500")
+            return None
+
+        if role == Qt.BackgroundRole:
+            # A3 — enrollment_status soft color chips
+            if col_key == "visa_status":
+                from PySide6.QtGui import QColor
+                STATUS_BG = {
+                    "enrolled":   QColor("#E6F4EA"),
+                    "pending":    QColor("#FFF8E1"),
+                    "withdrawn":  QColor("#FCE8E6"),
+                    "graduated":  QColor("#E8F0FE"),
+                    "dropped":    QColor("#FCE8E6"),
+                }
+                val = (getattr(record, "enrollment_status", "") or "").lower()
+                return STATUS_BG.get(val)
             return None
 
         if role == Qt.TextAlignmentRole:

@@ -279,6 +279,7 @@ def get_stylesheet() -> str:
         selection-background-color: {Colors.SELECTION_ACTIVE};
         selection-color: {Colors.TEXT_PRIMARY};
         font-size: 15px;
+        outline: 0;
     }}
 
     QTableView::item {{

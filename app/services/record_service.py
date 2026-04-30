@@ -7,10 +7,13 @@ from typing import Optional
 
 from app.database import get_connection
 from app.models import WalkInRecord
+from app.services.auth_service import AuthService
 from app.utils.logger import get_logger
 from core.audit_logger import log_action
 
 logger = get_logger(__name__)
+
+_auth = AuthService()
 
 
 class RecordService:
@@ -42,7 +45,7 @@ class RecordService:
             conn.commit()
             record_id = cursor.lastrowid
             logger.info("Created record ID=%d, passport=%s", record_id, record.passport_number)
-            log_action("admin", "CREATE_RECORD", "records", record_id,
+            log_action(_auth.get_username(), "CREATE_RECORD", "records", record_id,
                        f"Created record for {record.first_name} {record.last_name}")
             return record_id
         except sqlite3.Error as e:
@@ -235,7 +238,7 @@ class RecordService:
             conn.commit()
             if cursor.rowcount > 0:
                 logger.info("Updated record ID=%d", record_id)
-                log_action("admin", "EDIT_RECORD", "records", record_id,
+                log_action(_auth.get_username(), "EDIT_RECORD", "records", record_id,
                            f"Updated record for {record.first_name} {record.last_name}")
                 return True
             return False
@@ -257,7 +260,7 @@ class RecordService:
             conn.commit()
             if cursor.rowcount > 0:
                 logger.info("Soft-deleted record ID=%d", record_id)
-                log_action("admin", "DELETE_RECORD", "records", record_id,
+                log_action(_auth.get_username(), "DELETE_RECORD", "records", record_id,
                            "Record deactivated (soft-delete)")
                 return True
             return False
@@ -288,13 +291,142 @@ class RecordService:
             conn.commit()
             if cursor.rowcount > 0:
                 logger.info("Restored record ID=%d", record_id)
-                log_action("admin", "RESTORE_RECORD", "records", record_id,
+                log_action(_auth.get_username(), "RESTORE_RECORD", "records", record_id,
                            "Record restored from inactive")
                 return True
             return False
         except sqlite3.Error as e:
             conn.rollback()
             logger.error("Failed to restore record ID=%d: %s", record_id, e)
+            raise
+
+    # --------------- BATCH OPERATIONS ---------------
+    def batch_update_enrollment_status(
+        self, record_ids: list[int], new_status: str
+    ) -> int:
+        """Update enrollment_status for multiple records in a single transaction.
+
+        Returns the number of records successfully updated.
+        """
+        if not record_ids:
+            return 0
+
+        # C4 — SQLite limits IN clauses to ~999 variables; chunk large batches
+        CHUNK_SIZE = 500
+        if len(record_ids) > CHUNK_SIZE:
+            total = 0
+            for i in range(0, len(record_ids), CHUNK_SIZE):
+                total += self.batch_update_enrollment_status(
+                    record_ids[i:i + CHUNK_SIZE], new_status
+                )
+            return total
+
+        conn = get_connection()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        placeholders = ", ".join(["?"] * len(record_ids))
+        sql = (
+            f"UPDATE walkin_records "
+            f"SET enrollment_status = ?, updated_at = ? "
+            f"WHERE id IN ({placeholders}) AND is_active = 1"
+        )
+        params = [new_status, now] + record_ids
+
+        try:
+            cursor = conn.execute(sql, params)
+            conn.commit()
+            count = cursor.rowcount
+            logger.info(
+                "Batch updated enrollment_status='%s' for %d records",
+                new_status, count,
+            )
+            log_action(
+                _auth.get_username(), "BATCH_UPDATE", "records",
+                details=f"Set enrollment_status='{new_status}' on {count} records",
+            )
+            return count
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Batch update failed: %s", e)
+            raise
+
+    def batch_archive(self, record_ids: list[int]) -> int:
+        """Soft-delete (archive) multiple records at once.
+
+        Returns the number of records archived.
+        """
+        if not record_ids:
+            return 0
+
+        CHUNK_SIZE = 500
+        if len(record_ids) > CHUNK_SIZE:
+            total = 0
+            for i in range(0, len(record_ids), CHUNK_SIZE):
+                total += self.batch_archive(record_ids[i:i + CHUNK_SIZE])
+            return total
+
+        conn = get_connection()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        placeholders = ", ".join(["?"] * len(record_ids))
+        sql = (
+            f"UPDATE walkin_records "
+            f"SET is_active = 0, updated_at = ? "
+            f"WHERE id IN ({placeholders}) AND is_active = 1"
+        )
+        params = [now] + record_ids
+
+        try:
+            cursor = conn.execute(sql, params)
+            conn.commit()
+            count = cursor.rowcount
+            logger.info("Batch archived %d records", count)
+            log_action(
+                _auth.get_username(), "BATCH_ARCHIVE", "records",
+                details=f"Archived {count} records",
+            )
+            return count
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Batch archive failed: %s", e)
+            raise
+
+    def batch_restore(self, record_ids: list[int]) -> int:
+        """Restore multiple archived records at once.
+
+        Returns the number of records restored.
+        """
+        if not record_ids:
+            return 0
+
+        CHUNK_SIZE = 500
+        if len(record_ids) > CHUNK_SIZE:
+            total = 0
+            for i in range(0, len(record_ids), CHUNK_SIZE):
+                total += self.batch_restore(record_ids[i:i + CHUNK_SIZE])
+            return total
+
+        conn = get_connection()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        placeholders = ", ".join(["?"] * len(record_ids))
+        sql = (
+            f"UPDATE walkin_records "
+            f"SET is_active = 1, updated_at = ? "
+            f"WHERE id IN ({placeholders}) AND is_active = 0"
+        )
+        params = [now] + record_ids
+
+        try:
+            cursor = conn.execute(sql, params)
+            conn.commit()
+            count = cursor.rowcount
+            logger.info("Batch restored %d records", count)
+            log_action(
+                _auth.get_username(), "BATCH_RESTORE", "records",
+                details=f"Restored {count} records",
+            )
+            return count
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Batch restore failed: %s", e)
             raise
 
     # --------------- HELPERS ---------------

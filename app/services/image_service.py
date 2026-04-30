@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QRunnable, QThreadPool, Signal, QObject, Qt
 from PySide6.QtGui import QImage
 
 from app.database import get_connection, PROFILE_PICS_DIR

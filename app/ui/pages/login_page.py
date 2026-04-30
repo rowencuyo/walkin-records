@@ -3,15 +3,19 @@ Login page — shown on app startup before granting access.
 Handles both first-time password setup and regular login.
 """
 from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QWidget, QVBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox, QSpacerItem, QSizePolicy,
 )
 
 from app.services.auth_service import AuthService
 from app.utils.logger import get_logger
+from app.utils.paths import get_bundle_dir
 
 logger = get_logger(__name__)
+
+_ASSETS = get_bundle_dir() / "assets"
 
 
 class LoginPage(QWidget):
@@ -23,7 +27,28 @@ class LoginPage(QWidget):
         super().__init__(parent)
         self._auth = AuthService()
         self._is_setup = self._auth.is_setup_complete()
+        self._eye_open = QIcon(str(_ASSETS / "eye_open.svg"))
+        self._eye_closed = QIcon(str(_ASSETS / "eye_closed.svg"))
         self._setup_ui()
+
+    def _add_eye_toggle(self, field: QLineEdit) -> QAction:
+        """Add a clickable eye icon inside a QLineEdit to toggle visibility."""
+        action = QAction(self._eye_open, "", field)
+        action.setToolTip("Show password")
+        field.addAction(action, QLineEdit.TrailingPosition)
+
+        def _toggle():
+            if field.echoMode() == QLineEdit.Password:
+                field.setEchoMode(QLineEdit.Normal)
+                action.setIcon(self._eye_closed)
+                action.setToolTip("Hide password")
+            else:
+                field.setEchoMode(QLineEdit.Password)
+                action.setIcon(self._eye_open)
+                action.setToolTip("Show password")
+
+        action.triggered.connect(_toggle)
+        return action
 
     def _setup_ui(self):
         outer = QVBoxLayout(self)
@@ -41,7 +66,7 @@ class LoginPage(QWidget):
         card_layout.setSpacing(16)
 
         # Title
-        title = QLabel("Archivium", card)
+        title = QLabel("International Student\nServices", card)
         title.setStyleSheet(
             "font-size: 24px; font-weight: 700; color: #1D1D1F; "
             "background: transparent;"
@@ -88,6 +113,7 @@ class LoginPage(QWidget):
         self._password_input.setEchoMode(QLineEdit.Password)
         self._password_input.setFixedHeight(38)
         self._password_input.returnPressed.connect(self._on_submit)
+        self._pw_action = self._add_eye_toggle(self._password_input)
         card_layout.addWidget(self._password_input)
 
         # Confirm password (setup only)
@@ -103,6 +129,7 @@ class LoginPage(QWidget):
             self._confirm_input.setEchoMode(QLineEdit.Password)
             self._confirm_input.setFixedHeight(38)
             self._confirm_input.returnPressed.connect(self._on_submit)
+            self._confirm_action = self._add_eye_toggle(self._confirm_input)
             card_layout.addWidget(self._confirm_input)
         else:
             self._confirm_input = None

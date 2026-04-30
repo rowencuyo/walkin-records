@@ -137,7 +137,7 @@ class AuthService:
             )
             conn.commit()
             logger.info("Password changed")
-            log_action("admin", "CHANGE_PASSWORD", "auth", details="Password changed")
+            log_action(self.get_username(), "CHANGE_PASSWORD", "auth", details="Password changed")
             return True, ""
         except Exception as e:
             conn.rollback()

@@ -510,6 +510,10 @@ class PreviewPanel(QWidget):
         start = self.geometry()
         end = QRect(pw, 0, PANEL_WIDTH, ph)
         self._anim.stop()
+        try:
+            self._anim.finished.disconnect(self._on_slide_out_done)
+        except RuntimeError:
+            pass
         self._anim.setStartValue(start)
         self._anim.setEndValue(end)
         self._anim.finished.connect(self._on_slide_out_done)

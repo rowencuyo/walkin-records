@@ -76,6 +76,7 @@ class AuditViewerDialog(QDialog):
 
         # Table
         self._table = QTableWidget(self)
+        self._table.setFocusPolicy(Qt.NoFocus)
         self._table.setColumnCount(6)
         self._table.setHorizontalHeaderLabels([
             "Timestamp", "User", "Action", "Module", "Record ID", "Details"

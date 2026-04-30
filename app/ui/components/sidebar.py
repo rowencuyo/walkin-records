@@ -24,7 +24,7 @@ class Sidebar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebar")
-        self.setFixedWidth(200)
+        self.setFixedWidth(240)
         self._buttons: dict[str, QPushButton] = {}
         self._badges: dict[str, QLabel] = {}
         self._current_page = ""
@@ -36,9 +36,11 @@ class Sidebar(QWidget):
         layout.setSpacing(2)
 
         # App title
-        title = QLabel("Archivium", self)
+        title = QLabel("International Student\nServices", self)
+        title.setWordWrap(True)
+        title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet(
-            "font-size: 18px; font-weight: 700; padding: 8px 20px 16px 20px; color: #1F2933;"
+            "font-size: 15px; font-weight: 700; padding: 8px 20px 16px 20px; color: #1F2933;"
         )
         layout.addWidget(title)
 
@@ -91,13 +93,23 @@ class Sidebar(QWidget):
         self.page_changed.emit(page_id)
 
     def set_active(self, page_id: str):
-        """Set the active sidebar item."""
+        """Set the active sidebar item with a macOS-style left-accent indicator."""
         self._current_page = page_id
         for pid, btn in self._buttons.items():
             is_active = pid == page_id
             btn.setProperty("active", str(is_active).lower())
+            if is_active:
+                # A6 — 3px left accent bar, standard macOS source-list pattern
+                btn.setStyleSheet(
+                    "border-left: 3px solid #4F8EF7; "
+                    "border-top: none; border-right: none; border-bottom: none; "
+                    "border-radius: 0px;"
+                )
+            else:
+                btn.setStyleSheet("")   # reset to global QSS
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
 
     def set_badge(self, page_id: str, count: int):
         """Show or hide the red dot badge on a sidebar item."""

@@ -42,7 +42,8 @@ class WalkInRecord:
     remarks: str = ""
 
     # Enrollment
-    enrollment_status: str = ""  # Enrolled / Dropped / Graduated
+    location_status: str = ""   # e.g. Within / Outside Philippines
+    enrollment_status: str = ""  # Enrolled / Dropped / Graduated / etc.
 
     # System fields
     id: Optional[int] = None
@@ -57,6 +58,11 @@ class WalkInRecord:
         if self.suffix_name:
             name = f"{name} {self.suffix_name}"
         return name
+
+    @property
+    def display_name(self) -> str:
+        """Full name guaranteed to have no leading/trailing spaces."""
+        return self.full_name.strip()
 
     def to_dict(self) -> dict:
         """Convert to dictionary for database operations."""
@@ -85,6 +91,7 @@ class WalkInRecord:
             "visa_validity_date": self.visa_validity_date,
             "visa_status": self.visa_status,
             "remarks": self.remarks,
+            "location_status": self.location_status,
             "enrollment_status": self.enrollment_status,
             "is_active": 1 if self.is_active else 0,
         }
@@ -118,6 +125,7 @@ class WalkInRecord:
             visa_validity_date=row.get("visa_validity_date", ""),
             visa_status=row.get("visa_status", ""),
             remarks=row.get("remarks", ""),
+            location_status=row.get("location_status", ""),
             enrollment_status=row.get("enrollment_status", ""),
             is_active=bool(row.get("is_active", 1)),
             created_at=row.get("created_at", ""),
